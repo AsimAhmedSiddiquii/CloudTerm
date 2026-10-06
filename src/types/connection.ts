@@ -6,6 +6,15 @@ export interface ConnectionDraft {
   keyId: string;
   keyName: string;
   commandOnConnect: string;
+  bastion?: BastionConfig;
+}
+
+export interface BastionConfig {
+  host: string;
+  port: number;
+  username: string;
+  keyId: string;
+  keyName: string;
 }
 
 export interface SavedConnection

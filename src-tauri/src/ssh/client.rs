@@ -17,6 +17,7 @@ use russh::{
 };
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
+use tokio::io::{AsyncRead, AsyncWrite};
 use russh_sftp::client::SftpSession;
 
 #[derive(Debug, Clone, Serialize)]
@@ -105,7 +106,15 @@ impl client::Handler for Client {
 
 struct ActiveSession {
     session: client::Handle<Client>,
+    _upstream: Option<client::Handle<Client>>,
     writer: ChannelWriteHalf<client::Msg>,
+}
+
+pub struct BastionConnection {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub key_contents: String,
 }
 
 #[derive(Default)]
@@ -113,6 +122,91 @@ pub struct SshState {
     active: Mutex<HashMap<String, ActiveSession>>,
     pending_host_keys: Mutex<HashMap<String, oneshot::Sender<bool>>>,
     pending_key_passphrases: Mutex<HashMap<String, oneshot::Sender<String>>>,
+}
+
+async fn decode_key(
+    app: &AppHandle,
+    state: &SshState,
+    session_id: &str,
+    key_contents: &str,
+) -> Result<russh::keys::PrivateKey> {
+    match decode_secret_key(key_contents, None) {
+        Ok(key) => Ok(key),
+        Err(russh::keys::Error::KeyIsEncrypted) => {
+            let (passphrase_tx, passphrase_rx) = oneshot::channel();
+            state
+                .pending_key_passphrases
+                .lock()
+                .await
+                .insert(session_id.to_owned(), passphrase_tx);
+            let _ = app.emit(
+                "ssh-key-passphrase",
+                KeyPassphrasePrompt { session_id: session_id.to_owned() },
+            );
+            let passphrase = passphrase_rx
+                .await
+                .map_err(|_| anyhow::anyhow!("SSH key passphrase prompt was cancelled"))?;
+            state.pending_key_passphrases.lock().await.remove(session_id);
+            decode_secret_key(key_contents, Some(&passphrase))
+                .context("Unable to decode the SSH key with that passphrase")
+        }
+        Err(error) => Err(anyhow::anyhow!("Unable to decode the imported SSH key: {error}")),
+    }
+}
+
+async fn connect_session<R>(
+    config: Arc<client::Config>,
+    app: AppHandle,
+    state: &SshState,
+    session_id: &str,
+    host: String,
+    port: u16,
+    stream: Option<R>,
+) -> Result<client::Handle<Client>>
+where
+    R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (decision_tx, decision_rx) = oneshot::channel();
+    state
+        .pending_host_keys
+        .lock()
+        .await
+        .insert(session_id.to_owned(), decision_tx);
+    let handler = Client {
+        app,
+        session_id: session_id.to_owned(),
+        host: host.clone(),
+        port,
+        decision: Some(decision_rx),
+    };
+    let result = if let Some(stream) = stream {
+        tokio::time::timeout(Duration::from_secs(20), client::connect_stream(config, stream, handler))
+            .await
+            .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
+            .with_context(|| format!("Unable to connect to {}:{} through bastion", host, port))
+    } else {
+        tokio::time::timeout(Duration::from_secs(20), client::connect(config, (host.as_str(), port), handler))
+            .await
+            .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
+            .with_context(|| format!("Unable to connect to {}:{}", host, port))
+    };
+    state.pending_host_keys.lock().await.remove(session_id);
+    result
+}
+
+async fn authenticate(
+    session: &mut client::Handle<Client>,
+    username: String,
+    key_pair: russh::keys::PrivateKey,
+) -> Result<()> {
+    let hash_alg = session.best_supported_rsa_hash().await?.flatten();
+    let auth = session
+        .authenticate_publickey(username, PrivateKeyWithHashAlg::new(Arc::new(key_pair), hash_alg))
+        .await?;
+    if !auth.success() {
+        bail!("SSH authentication failed");
+    }
+    Ok(())
 }
 
 pub async fn connect_interactive(
@@ -126,6 +220,7 @@ pub async fn connect_interactive(
     command_on_connect: String,
     cols: u32,
     rows: u32,
+    bastion: Option<BastionConnection>,
 ) -> Result<()> {
     if session_id.trim().is_empty() {
         bail!("Session id is required");
@@ -137,87 +232,38 @@ pub async fn connect_interactive(
         bail!("Username is required");
     }
 
-    let key_pair = match decode_secret_key(&key_contents, None) {
-        Ok(key) => key,
-        Err(russh::keys::Error::KeyIsEncrypted) => {
-            let (passphrase_tx, passphrase_rx) = oneshot::channel();
-            state
-                .pending_key_passphrases
-                .lock()
-                .await
-                .insert(session_id.clone(), passphrase_tx);
-
-            let _ = app.emit(
-                "ssh-key-passphrase",
-                KeyPassphrasePrompt {
-                    session_id: session_id.clone(),
-                },
-            );
-
-            let passphrase = passphrase_rx
-                .await
-                .map_err(|_| anyhow::anyhow!("SSH key passphrase prompt was cancelled"))?;
-            state.pending_key_passphrases.lock().await.remove(&session_id);
-
-            decode_secret_key(&key_contents, Some(&passphrase))
-                .context("Unable to decode the SSH key with that passphrase")?
-        }
-        Err(error) => {
-            return Err(anyhow::anyhow!(
-                "Unable to decode the imported SSH key: {error}"
-            ));
-        }
-    };
+    let key_pair = decode_key(&app, state, &session_id, &key_contents).await?;
     let mut client_config = client::Config::default();
     client_config.keepalive_interval = Some(Duration::from_secs(30));
     client_config.keepalive_max = 3;
     let config = Arc::new(client_config);
-    let (decision_tx, decision_rx) = oneshot::channel();
-    state
-        .pending_host_keys
-        .lock()
-        .await
-        .insert(session_id.clone(), decision_tx);
-
-    let mut session = match tokio::time::timeout(
-        Duration::from_secs(20),
-        client::connect(
-        config,
-        (host.as_str(), port),
-        Client {
-            app: app.clone(),
-            session_id: session_id.clone(),
-            host: host.clone(),
-            port,
-            decision: Some(decision_rx),
-        },
-        ),
-    )
-    .await
-    .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))
-    .and_then(|result| {
-        result.with_context(|| format!("Unable to connect to {}:{}", host, port))
-    })
-    {
-        Ok(session) => session,
-        Err(error) => {
-            state.pending_host_keys.lock().await.remove(&session_id);
-            return Err(error);
+    let (session, upstream) = if let Some(bastion) = bastion {
+        if bastion.host.trim().is_empty() || bastion.username.trim().is_empty() {
+            bail!("Bastion host and username are required");
         }
+        let bastion_key = decode_key(&app, state, &session_id, &bastion.key_contents).await?;
+        let mut bastion_session = connect_session(
+            config.clone(), app.clone(), state, &session_id,
+            bastion.host.clone(), bastion.port, Option::<tokio::net::TcpStream>::None,
+        ).await?;
+        authenticate(&mut bastion_session, bastion.username, bastion_key).await?;
+        let channel = bastion_session
+            .channel_open_direct_tcpip(host.clone(), port as u32, "127.0.0.1", 0)
+            .await
+            .context("Unable to open a bastion tunnel to the target")?;
+        let target_session = connect_session(
+            config, app.clone(), state, &session_id, host.clone(), port, Some(channel.into_stream()),
+        ).await?;
+        let mut target_session = target_session;
+        authenticate(&mut target_session, username, key_pair).await?;
+        (target_session, Some(bastion_session))
+    } else {
+        let mut session = connect_session::<tokio::net::TcpStream>(
+            config, app.clone(), state, &session_id, host.clone(), port, None,
+        ).await?;
+        authenticate(&mut session, username, key_pair).await?;
+        (session, None)
     };
-
-    state.pending_host_keys.lock().await.remove(&session_id);
-
-    let hash_alg = session.best_supported_rsa_hash().await?.flatten();
-    let auth = session
-        .authenticate_publickey(
-            username,
-            PrivateKeyWithHashAlg::new(Arc::new(key_pair), hash_alg),
-        )
-        .await?;
-    if !auth.success() {
-        bail!("SSH authentication failed");
-    }
 
     let channel = session
         .channel_open_session()
@@ -237,7 +283,7 @@ pub async fn connect_interactive(
 
     if let Some(old) = state.active.lock().await.insert(
         session_id.clone(),
-        ActiveSession { session, writer },
+        ActiveSession { session, _upstream: upstream, writer },
     ) {
         let _ = old.writer.close().await;
         let _ = old

@@ -7,6 +7,7 @@ import {
 
 import type {
     ConnectionDraft,
+    BastionConfig,
     SavedConnection,
 } from "../types/connection";
 import { importKey } from "../services/keyVault";
@@ -70,6 +71,13 @@ export default function AwsConnectionForm({
     const [vaultPassword, setVaultPassword] = useState("");
 
     const [keyPath, setKeyPath] = useState("");
+
+    const [useBastion, setUseBastion] = useState(Boolean(initialConnection?.bastion));
+    const [bastionHost, setBastionHost] = useState(initialConnection?.bastion?.host ?? "");
+    const [bastionPort, setBastionPort] = useState(initialConnection?.bastion?.port ?? 22);
+    const [bastionUsername, setBastionUsername] = useState(initialConnection?.bastion?.username ?? "ubuntu");
+    const [bastionKeyId, setBastionKeyId] = useState(initialConnection?.bastion?.keyId ?? "");
+    const [bastionKeyName, setBastionKeyName] = useState(initialConnection?.bastion?.keyName ?? "");
 
     const [importingKey, setImportingKey] = useState(false);
 
@@ -159,6 +167,25 @@ export default function AwsConnectionForm({
             return null;
         }
 
+        let bastion: BastionConfig | undefined;
+        if (useBastion) {
+            if (!bastionHost.trim() || !bastionUsername.trim() || !bastionKeyId) {
+                setError("Bastion host, username, and SSH key are required.");
+                return null;
+            }
+            if (!Number.isFinite(bastionPort) || bastionPort <= 0 || bastionPort > 65535) {
+                setError("Enter a valid bastion port.");
+                return null;
+            }
+            bastion = {
+                host: bastionHost.trim(),
+                port: bastionPort,
+                username: bastionUsername.trim(),
+                keyId: bastionKeyId,
+                keyName: bastionKeyName,
+            };
+        }
+
         return {
             name:
                 name.trim() ||
@@ -175,6 +202,7 @@ export default function AwsConnectionForm({
             keyId,
             keyName,
             commandOnConnect: commandOnConnect.trim(),
+            bastion,
         };
     }
 
@@ -393,6 +421,27 @@ export default function AwsConnectionForm({
                         onChange={(event) => setCommandOnConnect(event.target.value)}
                         placeholder="e.g. cd /var/www/app"
                     />
+
+                    <label className="checkbox-label">
+                        <input type="checkbox" checked={useBastion} onChange={(event) => setUseBastion(event.target.checked)} />
+                        Connect through a bastion / jump host
+                    </label>
+
+                    {useBastion && (
+                        <div className="bastion-card">
+                            <label>Bastion host</label>
+                            <input value={bastionHost} onChange={(event) => setBastionHost(event.target.value)} placeholder="bastion.example.com" />
+                            <div className="form-row">
+                                <div><label>Bastion username</label><input value={bastionUsername} onChange={(event) => setBastionUsername(event.target.value)} placeholder="ubuntu" /></div>
+                                <div className="port-field"><label>Port</label><input type="number" value={bastionPort} onChange={(event) => setBastionPort(Number(event.target.value))} /></div>
+                            </div>
+                            <label>Bastion SSH key</label>
+                            <select value={bastionKeyId} onChange={(event) => { const selected = availableKeys.find((key) => key.id === event.target.value); setBastionKeyId(event.target.value); setBastionKeyName(selected?.name ?? ""); }}>
+                                <option value="">Select an imported key</option>
+                                {availableKeys.map((key) => <option value={key.id} key={key.id}>{key.name}</option>)}
+                            </select>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="form-error">

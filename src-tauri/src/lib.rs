@@ -32,6 +32,16 @@ struct SshConnectionRequest {
     command_on_connect: String,
     cols: u32,
     rows: u32,
+    bastion: Option<BastionRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BastionRequest {
+    host: String,
+    port: u16,
+    username: String,
+    key_contents: String,
 }
 
 #[tauri::command]
@@ -51,6 +61,12 @@ async fn connect_aws_ssh(
         request.command_on_connect,
         request.cols,
         request.rows,
+        request.bastion.map(|bastion| ssh::client::BastionConnection {
+            host: bastion.host,
+            port: bastion.port,
+            username: bastion.username,
+            key_contents: bastion.key_contents,
+        }),
     )
     .await
     .map_err(|error| error.to_string())

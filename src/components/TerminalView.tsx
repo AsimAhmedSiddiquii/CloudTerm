@@ -20,6 +20,7 @@ import {
   listen,
 } from "@tauri-apps/api/event";
 import { readKey } from "../services/keyVault";
+import type { BastionConfig } from "../types/connection";
 
 import "@xterm/xterm/css/xterm.css";
 
@@ -31,6 +32,7 @@ interface Props {
   keyId: string;
   vaultPassword: string;
   commandOnConnect: string;
+  bastion?: BastionConfig;
 
   onBack: () => void;
 
@@ -65,6 +67,7 @@ export default function TerminalView({
   keyId,
   vaultPassword,
   commandOnConnect,
+  bastion,
   onBack,
   onConnected,
   onDisconnected,
@@ -191,6 +194,9 @@ export default function TerminalView({
           vaultPassword,
           keyId
         );
+        const bastionKeyContents = bastion
+          ? await readKey(vaultPassword, bastion.keyId)
+          : undefined;
 
         await invoke(
           "connect_aws_ssh",
@@ -204,6 +210,12 @@ export default function TerminalView({
               commandOnConnect,
               cols: terminal.cols,
               rows: terminal.rows,
+              bastion: bastion && bastionKeyContents ? {
+                host: bastion.host,
+                port: bastion.port,
+                username: bastion.username,
+                keyContents: bastionKeyContents,
+              } : null,
             },
           }
         );
@@ -290,6 +302,7 @@ export default function TerminalView({
     keyId,
     vaultPassword,
     commandOnConnect,
+    bastion,
     onHostKeyPrompt,
     onKeyPassphrasePrompt,
     retryCount,
