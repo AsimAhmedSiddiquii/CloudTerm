@@ -211,14 +211,6 @@ input {
   text-align: left;
 }
 
-.connection-status {
-  flex-shrink: 0;
-
-  color: #3fb950;
-
-  font-size: 10px;
-}
-
 .connection-details {
   min-width: 0;
 
@@ -659,4 +651,83 @@ button:disabled {
 .connection-page::-webkit-scrollbar-thumb:hover,
 .xterm-viewport::-webkit-scrollbar-thumb:hover {
   background: #484f58;
+}
+
+.connection-status {
+  font-size: 9px;
+
+  flex-shrink: 0;
+
+  transition: color 0.2s ease;
+}
+
+.status-disconnected {
+  color: #6e7681;
+}
+
+.status-connecting {
+  color: #d29922;
+
+  animation: status-pulse 1s infinite;
+}
+
+.status-connected {
+  color: #3fb950;
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.connection-actions-small {
+  display: flex;
+  align-items: center;
+
+  opacity: 0;
+
+  padding-right: 4px;
+}
+
+.connection-item:hover
+.connection-actions-small {
+  opacity: 1;
+}
+
+.connection-edit,
+.connection-delete {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  background: transparent;
+
+  border: none;
+
+  color: #8b949e;
+
+  cursor: pointer;
+
+  border-radius: 4px;
+}
+
+.connection-edit:hover {
+  color: #58a6ff;
+  background: #21262d;
+}
+
+.connection-delete:hover {
+  color: #ff7b72;
+  background: #21262d;
 }

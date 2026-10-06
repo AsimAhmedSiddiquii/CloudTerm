@@ -26,7 +26,11 @@ interface Props {
   port: number;
   username: string;
   keyPath: string;
+
   onBack: () => void;
+
+  onConnected?: () => void;
+  onDisconnected?: () => void;
 }
 
 export default function TerminalView({
@@ -35,6 +39,8 @@ export default function TerminalView({
   username,
   keyPath,
   onBack,
+  onConnected,
+  onDisconnected,
 }: Props) {
   const terminalContainer =
     useRef<HTMLDivElement>(null);
@@ -102,6 +108,8 @@ export default function TerminalView({
         await listen(
           "ssh-closed",
           () => {
+            onDisconnected?.();
+
             terminal.write(
               "\r\n\x1b[31mConnection closed.\x1b[0m\r\n"
             );
@@ -122,12 +130,17 @@ export default function TerminalView({
             },
           }
         );
+
+        onConnected?.();
       } catch (error) {
+        onDisconnected?.();
+
         terminal.write(
           `\r\n\x1b[31mConnection failed: ${String(
             error
           )}\x1b[0m\r\n`
         );
+
       }
     }
 
@@ -166,7 +179,7 @@ export default function TerminalView({
             cols: terminal.cols,
             rows: terminal.rows,
           }
-        ).catch(() => {});
+        ).catch(() => { });
       });
 
     resizeObserver.observe(
@@ -185,7 +198,7 @@ export default function TerminalView({
 
       invoke(
         "ssh_disconnect"
-      ).catch(() => {});
+      ).catch(() => { });
 
       terminal.dispose();
     };

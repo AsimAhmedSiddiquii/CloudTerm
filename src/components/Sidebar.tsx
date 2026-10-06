@@ -1,36 +1,50 @@
-import type {
-  SavedConnection,
-} from "../types/connection";
+import type { SavedConnection } from "../types/connection";
+
+export type ConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected";
 
 interface Props {
   connections: SavedConnection[];
-
   activeId?: string;
+  status: ConnectionStatus;
 
-  onSelect: (
-    connection: SavedConnection
-  ) => void;
-
+  onSelect: (connection: SavedConnection) => void;
+  onEdit: (connection: SavedConnection) => void;
+  onDelete: (id: string) => void;
   onAdd: () => void;
-
-  onDelete: (
-    id: string
-  ) => void;
 }
 
 export default function Sidebar({
   connections,
   activeId,
+  status,
   onSelect,
-  onAdd,
+  onEdit,
   onDelete,
+  onAdd,
 }: Props) {
+  function getStatusClass(id: string) {
+    if (activeId !== id) {
+      return "status-disconnected";
+    }
+
+    if (status === "connected") {
+      return "status-connected";
+    }
+
+    if (status === "connecting") {
+      return "status-connecting";
+    }
+
+    return "status-disconnected";
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-icon">
-          C
-        </div>
+        <div className="brand-icon">C</div>
 
         <div>
           <div className="brand-name">
@@ -62,37 +76,51 @@ export default function Sidebar({
             </div>
           )}
 
-          {connections.map(
-            (connection) => (
-              <div
-                key={connection.id}
-                className={
-                  activeId === connection.id
-                    ? "connection-item active"
-                    : "connection-item"
+          {connections.map((connection) => (
+            <div
+              key={connection.id}
+              className={
+                activeId === connection.id
+                  ? "connection-item active"
+                  : "connection-item"
+              }
+            >
+              <button
+                className="connection-main"
+                onClick={() =>
+                  onSelect(connection)
                 }
               >
-                <button
-                  className="connection-main"
-                  onClick={() =>
-                    onSelect(connection)
-                  }
+                <span
+                  className={`connection-status ${getStatusClass(
+                    connection.id
+                  )}`}
                 >
-                  <span className="connection-status">
-                    ●
+                  ●
+                </span>
+
+                <span className="connection-details">
+                  <span className="connection-name">
+                    {connection.name}
                   </span>
 
-                  <span className="connection-details">
-                    <span className="connection-name">
-                      {connection.name}
-                    </span>
-
-                    <span className="connection-host">
-                      {connection.username}
-                      @
-                      {connection.host}
-                    </span>
+                  <span className="connection-host">
+                    {connection.username}@
+                    {connection.host}
                   </span>
+                </span>
+              </button>
+
+              <div className="connection-actions-small">
+                <button
+                  className="connection-edit"
+                  title="Edit connection"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onEdit(connection);
+                  }}
+                >
+                  ✎
                 </button>
 
                 <button
@@ -100,17 +128,14 @@ export default function Sidebar({
                   title="Delete connection"
                   onClick={(event) => {
                     event.stopPropagation();
-
-                    onDelete(
-                      connection.id
-                    );
+                    onDelete(connection.id);
                   }}
                 >
                   ×
                 </button>
               </div>
-            )
-          )}
+            </div>
+          ))}
         </div>
       </div>
 
