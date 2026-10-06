@@ -731,3 +731,10 @@ button:disabled {
   color: #ff7b72;
   background: #21262d;
 }
+
+.brand-icon-image {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  border-radius: 9px;
+}

@@ -1,5 +1,7 @@
 import type { SavedConnection } from "../types/connection";
 
+import cloudTermIcon from "../assets/cloudterm-icon.png";
+
 export type ConnectionStatus =
   | "disconnected"
   | "connecting"
@@ -44,7 +46,11 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <div className="brand-icon">C</div>
+        <img
+          src={cloudTermIcon}
+          alt="CloudTerm"
+          className="brand-icon-image"
+        />
 
         <div>
           <div className="brand-name">

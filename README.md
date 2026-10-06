@@ -1,32 +1,282 @@
-# React + TypeScript + Vite
+# CloudTerm
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+CloudTerm is a cross-platform desktop SSH connection manager built with **Tauri**, **React**, **TypeScript**, **Rust**, **russh**, and **xterm.js**.
 
-Currently, two official plugins are available:
+The current version focuses on **AWS EC2 SSH connections** using PEM/private key authentication.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Current Features
 
-## React Compiler
+- Connect to AWS EC2 instances over SSH
+- PEM/private key authentication
+- Interactive terminal powered by xterm.js
+- Save SSH connections locally
+- Persistent AWS connection sidebar
+- Edit and delete saved connections
+- Connection status indicators
+- Native desktop file picker for SSH keys
+- Windows desktop application via Tauri
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the Oxlint configuration
+### Frontend
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- React
+- TypeScript
+- Vite
+- xterm.js
+
+### Desktop
+
+- Tauri 2
+
+### Backend
+
+- Rust
+- russh
+- Tokio
+
+### Local Persistence
+
+- Tauri Store
+
+## Project Structure
+
+```text
+CloudTerm/
+├── src/
+│   ├── components/
+│   │   ├── AwsConnectionForm.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── TerminalView.tsx
+│   ├── services/
+│   │   └── connectionStore.ts
+│   ├── types/
+│   │   └── connection.ts
+│   ├── App.tsx
+│   ├── App.css
+│   ├── index.css
+│   └── main.tsx
+│
+├── src-tauri/
+│   ├── capabilities/
+│   │   └── default.json
+│   ├── src/
+│   │   ├── ssh/
+│   │   │   ├── mod.rs
+│   │   │   └── client.rs
+│   │   ├── lib.rs
+│   │   └── main.rs
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+│
+├── package.json
+└── README.md
+```
+
+## Requirements
+
+Install the following before running CloudTerm:
+
+- Node.js
+- npm
+- Rust / Cargo
+- Microsoft C++ Build Tools on Windows
+- WebView2 Runtime on Windows
+
+Verify Rust:
+
+```powershell
+rustc --version
+cargo --version
+```
+
+## Install Dependencies
+
+From the project root:
+
+```powershell
+npm install
+```
+
+## Run in Development
+
+```powershell
+npm run tauri dev
+```
+
+This launches the React frontend and the native Tauri desktop window.
+
+## Using CloudTerm
+
+Create a new AWS connection and enter:
+
+- Connection name
+- EC2 public IP or hostname
+- SSH port, normally `22`
+- SSH username
+- PEM/private key file
+
+Common AWS usernames include:
+
+```text
+Ubuntu       ubuntu
+Amazon Linux ec2-user
+Debian       admin
+CentOS       centos
+```
+
+The correct username depends on the EC2 AMI.
+
+You can either:
+
+- **Save** — store the connection without opening it
+- **Connect** — connect without saving
+- **Save & Connect** — persist the connection and immediately open the terminal
+
+Saved connections appear in the AWS section of the sidebar.
+
+## Build an Installable Desktop Application
+
+First make sure the development build works:
+
+```powershell
+npm run tauri dev
+```
+
+Then create a production build:
+
+```powershell
+npm run tauri build
+```
+
+Tauri will compile the React frontend and Rust backend and generate release bundles.
+
+On Windows, generated installers are normally available under:
+
+```text
+src-tauri\target\release\bundle\
+```
+
+Typical output directories include:
+
+```text
+bundle\msi\
+bundle\nsis\
+```
+
+The release executable is also available at:
+
+```text
+src-tauri\target\release\
+```
+
+## Recommended Tauri Bundle Configuration
+
+In `src-tauri/tauri.conf.json`, configure the application metadata before releasing:
 
 ```json
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  "productName": "CloudTerm",
+  "version": "0.1.0",
+  "identifier": "com.entwicklera.cloudterm",
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Then rebuild:
+
+```powershell
+npm run tauri build
+```
+
+## Windows Installation
+
+After a successful build, open:
+
+```text
+src-tauri\target\release\bundle\
+```
+
+and install CloudTerm using the generated `.exe` or `.msi` installer.
+
+Unsigned development builds may trigger Microsoft SmartScreen warnings. Code signing should be configured before distributing CloudTerm publicly.
+
+## Security Notes
+
+CloudTerm currently stores saved connection metadata locally.
+
+The application currently references the selected PEM/private key by its filesystem path. The PEM contents are not stored inside the connection JSON.
+
+Planned security improvements include:
+
+- Encrypted SSH key vault
+- Tauri Stronghold integration
+- Host key fingerprint verification
+- `known_hosts` support
+- Passphrase-protected private keys
+- Windows Hello / biometric vault unlock
+- SSH agent support
+
+> The current SSH host-key handler is still intended for development. Proper server fingerprint verification should be implemented before CloudTerm is distributed as a production SSH client.
+
+## Roadmap
+
+### AWS
+
+- [x] PEM authentication
+- [x] Interactive SSH terminal
+- [x] Saved connections
+- [x] Sidebar connection manager
+- [x] Edit/delete connection
+- [x] Connection status
+- [ ] Encrypted SSH key vault
+- [ ] Host fingerprint verification
+- [ ] Multiple terminal tabs
+- [ ] SFTP browser
+- [ ] SSH port forwarding
+- [ ] Bastion / jump host support
+- [ ] Import from `~/.ssh/config`
+- [ ] AWS account integration
+- [ ] Automatic EC2 discovery
+
+### Future Cloud Providers
+
+- [ ] Microsoft Azure
+- [ ] Google Cloud Platform
+- [ ] Generic VPS / Linux server
+- [ ] DigitalOcean
+- [ ] Hetzner
+
+## Production Roadmap
+
+Before publishing CloudTerm publicly:
+
+1. Add encrypted private-key storage.
+2. Implement SSH host-key verification.
+3. Add application icons.
+4. Add proper semantic versioning.
+5. Add Windows code signing.
+6. Test installer upgrades/uninstalls.
+7. Test on a clean Windows machine.
+8. Build macOS and Linux packages.
+9. Add automatic updates.
+
+## License
+
+Add your preferred license before public distribution.
+
+## Developed By
+
+**Entwicklera**
+
+Custom software, automation, AI, and cloud solutions.
