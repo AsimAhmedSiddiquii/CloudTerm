@@ -3,7 +3,8 @@ export interface ConnectionDraft {
   host: string;
   port: number;
   username: string;
-  keyPath: string;
+  keyId: string;
+  keyName: string;
 }
 
 export interface SavedConnection

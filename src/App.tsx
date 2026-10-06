@@ -8,6 +8,9 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import AwsConnectionForm from "./components/AwsConnectionForm";
 import TerminalView from "./components/TerminalView";
+import type { HostKeyPrompt } from "./components/TerminalView";
+
+import { invoke } from "@tauri-apps/api/core";
 
 import type {
   ConnectionStatus,
@@ -65,6 +68,21 @@ function App() {
     useState<ConnectionStatus>(
       "disconnected"
     );
+
+  const [hostKeyPrompt, setHostKeyPrompt] =
+    useState<HostKeyPrompt | null>(null);
+
+  const [vaultPassword, setVaultPassword] =
+    useState("");
+
+  const [splitMode, setSplitMode] =
+    useState(false);
+
+  const [splitConnections, setSplitConnections] =
+    useState<SavedConnection[]>([]);
+
+  const [splitStatuses, setSplitStatuses] =
+    useState<Record<string, ConnectionStatus>>({});
 
   useEffect(() => {
     refreshConnections().catch(
@@ -129,6 +147,8 @@ function App() {
       createdAt:
         new Date().toISOString(),
     });
+    setSplitConnections([]);
+    setSplitMode(false);
 
     setShowNewConnection(false);
   }
@@ -136,6 +156,18 @@ function App() {
   function handleSavedSelect(
     connection: SavedConnection
   ) {
+    if (splitMode && activeConnection) {
+      if (
+        connection.id !== activeConnection.id &&
+        !splitConnections.some((item) => item.id === connection.id)
+      ) {
+        setSplitConnections((current) =>
+          [...current, connection].slice(0, 3)
+        );
+      }
+      return;
+    }
+
     setEditingConnection(null);
 
     setConnectionStatus(
@@ -153,6 +185,8 @@ function App() {
     connection: SavedConnection
   ) {
     setActiveConnection(null);
+    setSplitConnections([]);
+    setSplitMode(false);
 
     setEditingConnection(
       connection
@@ -198,6 +232,10 @@ function App() {
       );
     }
 
+    setSplitConnections((current) =>
+      current.filter((item) => item.id !== id)
+    );
+
     if (
       editingConnection?.id === id
     ) {
@@ -216,6 +254,39 @@ function App() {
     );
 
     setShowNewConnection(true);
+    setSplitConnections([]);
+    setSplitMode(false);
+  }
+
+  function toggleSplitMode() {
+    if (!activeConnection) {
+      return;
+    }
+
+    if (splitMode) {
+      setSplitMode(false);
+      setSplitConnections([]);
+      return;
+    }
+
+    const firstOther = connections.find(
+      (connection) => connection.id !== activeConnection.id
+    );
+
+    setSplitMode(true);
+    if (firstOther) {
+      setSplitConnections([firstOther]);
+    }
+  }
+
+  function setSplitStatus(
+    id: string,
+    status: ConnectionStatus
+  ) {
+    setSplitStatuses((current) => ({
+      ...current,
+      [id]: status,
+    }));
   }
 
   return (
@@ -232,40 +303,66 @@ function App() {
 
       <main className="main-content">
         {activeConnection ? (
-          <TerminalView
-            host={activeConnection.host}
-            port={activeConnection.port}
-            username={
-              activeConnection.username
-            }
-            keyPath={
-              activeConnection.keyPath
-            }
+          <div className={`terminal-workspace ${splitMode ? "is-split" : ""}`}>
+            <TerminalView
+              sessionId={`primary-${activeConnection.id}`}
+              host={activeConnection.host}
+              port={activeConnection.port}
+              username={activeConnection.username}
+              keyId={activeConnection.keyId}
+              vaultPassword={vaultPassword}
+              status={connectionStatus}
+              onHostKeyPrompt={setHostKeyPrompt}
+              onSplitToggle={toggleSplitMode}
+              splitMode={splitMode}
+              onConnected={() => setConnectionStatus("connected")}
+              onDisconnected={() => setConnectionStatus("disconnected")}
+              onBack={() => {
+                setActiveConnection(null);
+                setSplitConnections([]);
+                setSplitMode(false);
+                setConnectionStatus("disconnected");
+                setShowNewConnection(false);
+              }}
+            />
 
-            onConnected={() =>
-              setConnectionStatus(
-                "connected"
-              )
-            }
+            {splitMode && splitConnections.map((connection) => (
+              <TerminalView
+                key={connection.id}
+                sessionId={`split-${connection.id}`}
+                host={connection.host}
+                port={connection.port}
+                username={connection.username}
+                keyId={connection.keyId}
+                vaultPassword={vaultPassword}
+                status={splitStatuses[connection.id] ?? "connecting"}
+                onHostKeyPrompt={setHostKeyPrompt}
+                onConnected={() => setSplitStatus(connection.id, "connected")}
+                onDisconnected={() => setSplitStatus(connection.id, "disconnected")}
+                onBack={() => setSplitConnections((current) =>
+                  current.filter((item) => item.id !== connection.id)
+                )}
+              />
+            ))}
 
-            onDisconnected={() =>
-              setConnectionStatus(
-                "disconnected"
-              )
-            }
-
-            onBack={() => {
-              setActiveConnection(null);
-
-              setConnectionStatus(
-                "disconnected"
-              );
-
-              setShowNewConnection(
-                false
-              );
-            }}
-          />
+            {splitMode && splitConnections.length < 3 && (
+              <button
+                className="add-terminal-pane"
+                type="button"
+                onClick={() => {
+                  const next = connections.find((item) =>
+                    item.id !== activeConnection.id &&
+                    !splitConnections.some((open) => open.id === item.id)
+                  );
+                  if (next) {
+                    setSplitConnections((current) => [...current, next].slice(0, 3));
+                  }
+                }}
+              >
+                + Add terminal pane
+              </button>
+            )}
+          </div>
         ) : showNewConnection ? (
           <AwsConnectionForm
             initialConnection={
@@ -275,6 +372,7 @@ function App() {
             onConnect={
               handleConnect
             }
+            onVaultPasswordChange={setVaultPassword}
           />
         ) : (
           <div className="welcome-page">
@@ -296,6 +394,49 @@ function App() {
           </div>
         )}
       </main>
+
+      {hostKeyPrompt && (
+        <div className="modal-backdrop">
+          <section className="trust-dialog" role="dialog" aria-modal="true">
+            <div className="trust-dialog-icon">!</div>
+            <p className="eyebrow">FIRST CONNECTION</p>
+            <h2>Verify this server</h2>
+            <p>
+              CloudTerm cannot verify this server yet. Continue only if this fingerprint matches the server you expect.
+            </p>
+            <div className="fingerprint-card">
+              <span>{hostKeyPrompt.host}:{hostKeyPrompt.port}</span>
+              <code>{hostKeyPrompt.fingerprint}</code>
+            </div>
+            <div className="trust-actions">
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  invoke("ssh_host_key_decision", {
+                    sessionId: hostKeyPrompt.sessionId,
+                    accepted: false,
+                  }).catch(console.error);
+                  setHostKeyPrompt(null);
+                }}
+              >
+                Reject
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  invoke("ssh_host_key_decision", {
+                    sessionId: hostKeyPrompt.sessionId,
+                    accepted: true,
+                  }).catch(console.error);
+                  setHostKeyPrompt(null);
+                }}
+              >
+                Trust & connect
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

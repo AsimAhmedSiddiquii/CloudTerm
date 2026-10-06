@@ -1,0 +1,166 @@
+use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
+
+use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Nonce};
+use anyhow::{Context, Result};
+use argon2::Argon2;
+use rand::RngExt;
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Manager};
+use tokio::sync::Mutex;
+
+const SALT_LENGTH: usize = 16;
+const NONCE_LENGTH: usize = 12;
+
+#[derive(Default)]
+pub struct VaultState {
+    pub lock: Mutex<()>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultKey {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct VaultFile {
+    salt: Vec<u8>,
+    entries: HashMap<String, VaultEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct VaultEntry {
+    name: String,
+    ciphertext: Vec<u8>,
+}
+
+fn vault_path(app: &AppHandle) -> Result<PathBuf> {
+    Ok(app
+        .path()
+        .app_local_data_dir()
+        .context("Unable to resolve the CloudTerm data directory")?
+        .join("cloudterm-keys.vault"))
+}
+
+fn load_vault(path: &PathBuf) -> Result<VaultFile> {
+    if !path.exists() {
+        return Ok(VaultFile::default());
+    }
+
+    let bytes = fs::read(path).context("Unable to read the encrypted key vault")?;
+    serde_json::from_slice(&bytes).context("The encrypted key vault is corrupted")
+}
+
+fn save_vault(path: &PathBuf, vault: &VaultFile) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).context("Unable to create the CloudTerm data directory")?;
+    }
+
+    let bytes = serde_json::to_vec_pretty(vault)?;
+    fs::write(path, bytes).context("Unable to save the encrypted key vault")?;
+    Ok(())
+}
+
+fn encryption_key(password: &str, salt: &[u8]) -> Result<[u8; 32]> {
+    let mut key = [0u8; 32];
+    Argon2::default()
+        .hash_password_into(password.as_bytes(), salt, &mut key)
+        .map_err(|error| anyhow::anyhow!("Unable to derive vault key: {error}"))?;
+    Ok(key)
+}
+
+pub async fn import_key(
+    app: AppHandle,
+    state: &VaultState,
+    path: String,
+    name: String,
+    password: String,
+) -> Result<VaultKey> {
+    let _guard = state.lock.lock().await;
+    if password.trim().is_empty() {
+        anyhow::bail!("Vault password is required");
+    }
+    let source = fs::read_to_string(&path)
+        .with_context(|| format!("Unable to read SSH key: {path}"))?;
+    let file_path = vault_path(&app)?;
+    let mut vault = load_vault(&file_path)?;
+
+    if vault.salt.len() != SALT_LENGTH {
+        vault.salt = vec![0u8; SALT_LENGTH];
+        rand::rng().fill(vault.salt.as_mut_slice());
+    }
+
+    let key = encryption_key(&password, &vault.salt)?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
+
+    if let Some(existing) = vault.entries.values().next() {
+        if existing.ciphertext.len() <= NONCE_LENGTH {
+            anyhow::bail!("The encrypted SSH key vault is corrupted");
+        }
+        cipher
+            .decrypt(
+                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &existing.ciphertext[NONCE_LENGTH..],
+            )
+            .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
+    }
+    let mut nonce_bytes = [0u8; NONCE_LENGTH];
+    rand::rng().fill(&mut nonce_bytes);
+    let ciphertext = cipher
+        .encrypt(Nonce::from_slice(&nonce_bytes), source.as_bytes())
+        .map_err(|_| anyhow::anyhow!("Unable to encrypt SSH key"))?;
+
+    let mut id_bytes = [0u8; 16];
+    rand::rng().fill(&mut id_bytes);
+    let id = id_bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let key_name = if name.trim().is_empty() {
+        "Imported SSH key".to_string()
+    } else {
+        name.trim().to_string()
+    };
+    let mut stored = nonce_bytes.to_vec();
+    stored.extend(ciphertext);
+    vault.entries.insert(id.clone(), VaultEntry {
+        name: key_name.clone(),
+        ciphertext: stored,
+    });
+    save_vault(&file_path, &vault)?;
+
+    Ok(VaultKey { id, name: key_name })
+}
+
+pub async fn read_key(
+    app: AppHandle,
+    state: &VaultState,
+    id: String,
+    password: String,
+) -> Result<String> {
+    let _guard = state.lock.lock().await;
+    if password.trim().is_empty() {
+        anyhow::bail!("Vault password is required");
+    }
+    let vault = load_vault(&vault_path(&app)?)?;
+    let entry = vault.entries.get(&id).context("SSH key was not found in the vault")?;
+    let key = encryption_key(&password, &vault.salt)?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
+
+    if entry.ciphertext.len() <= NONCE_LENGTH {
+        anyhow::bail!("The encrypted SSH key is corrupted");
+    }
+
+    let plaintext = cipher
+        .decrypt(
+            Nonce::from_slice(&entry.ciphertext[..NONCE_LENGTH]),
+            &entry.ciphertext[NONCE_LENGTH..],
+        )
+        .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
+    String::from_utf8(plaintext).context("The stored SSH key is not valid text")
+}

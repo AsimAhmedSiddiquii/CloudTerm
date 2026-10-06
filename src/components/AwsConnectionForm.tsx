@@ -9,6 +9,7 @@ import type {
     ConnectionDraft,
     SavedConnection,
 } from "../types/connection";
+import { importKey } from "../services/keyVault";
 
 interface Props {
     initialConnection?: SavedConnection | null;
@@ -21,12 +22,15 @@ interface Props {
         connection: ConnectionDraft,
         existingId?: string
     ) => Promise<void>;
+
+    onVaultPasswordChange: (password: string) => void;
 }
 
 export default function AwsConnectionForm({
     initialConnection,
     onConnect,
     onSave,
+    onVaultPasswordChange,
 }: Props) {
     const [name, setName] = useState(
         initialConnection?.name ?? ""
@@ -44,55 +48,63 @@ export default function AwsConnectionForm({
         initialConnection?.username ?? "ubuntu"
     );
 
-    const [keyPath, setKeyPath] = useState(
-        initialConnection?.keyPath ?? ""
+    const [keyId, setKeyId] = useState(
+        initialConnection?.keyId ?? ""
     );
+
+    const [keyName, setKeyName] = useState(
+        initialConnection?.keyName ?? ""
+    );
+
+    const [vaultPassword, setVaultPassword] = useState("");
+
+    const [keyPath, setKeyPath] = useState("");
+
+    const [importingKey, setImportingKey] = useState(false);
+
+    function updateVaultPassword(password: string) {
+        setVaultPassword(password);
+        onVaultPasswordChange(password);
+    }
+
+    async function importPem() {
+        if (!vaultPassword) {
+            setError("Enter a vault password before importing a key.");
+            return;
+        }
+
+        try {
+            setImportingKey(true);
+            setError("");
+            const selected = await open({
+                multiple: false,
+                directory: false,
+                title: "Import SSH Private Key",
+                filters: [{ name: "SSH Private Key", extensions: ["pem", "key"] }],
+            });
+
+            if (typeof selected === "string") {
+                const imported = await importKey(
+                    vaultPassword,
+                    selected.split(/[\\/]/).pop()?.replace(/\.(pem|key)$/i, "") ?? "Imported SSH key",
+                    selected
+                );
+                setKeyId(imported.id);
+                setKeyName(imported.name);
+                setKeyPath(selected);
+            }
+        } catch (err) {
+            setError(`Unable to import key: ${String(err)}`);
+        } finally {
+            setImportingKey(false);
+        }
+    }
 
     const [error, setError] =
         useState("");
 
     const [saved, setSaved] =
         useState(false);
-
-    async function choosePem() {
-        try {
-            setError("");
-
-            const selected =
-                await open({
-                    multiple: false,
-                    directory: false,
-
-                    title:
-                        "Select AWS PEM Key",
-
-                    filters: [
-                        {
-                            name:
-                                "SSH Private Key",
-
-                            extensions: [
-                                "pem",
-                                "key",
-                            ],
-                        },
-                    ],
-                });
-
-            if (
-                typeof selected ===
-                "string"
-            ) {
-                setKeyPath(selected);
-            }
-        } catch (err) {
-            setError(
-                `Unable to select key: ${String(
-                    err
-                )}`
-            );
-        }
-    }
 
     function getDraft():
         | ConnectionDraft
@@ -115,9 +127,9 @@ export default function AwsConnectionForm({
             return null;
         }
 
-        if (!keyPath) {
+        if (!keyId) {
             setError(
-                "Select a PEM key."
+                "Import an SSH key into the vault."
             );
 
             return null;
@@ -148,7 +160,8 @@ export default function AwsConnectionForm({
             username:
                 username.trim(),
 
-            keyPath,
+            keyId,
+            keyName,
         };
     }
 
@@ -311,24 +324,31 @@ export default function AwsConnectionForm({
 
                     </div>
 
-                    <label>
-                        SSH Private Key
-                    </label>
+                    <label>Vault Password</label>
+
+                    <input
+                        type="password"
+                        value={vaultPassword}
+                        onChange={(e) => updateVaultPassword(e.target.value)}
+                        placeholder="Required to unlock encrypted keys"
+                    />
+
+                    <label>Encrypted SSH Key</label>
 
                     <div className="key-row">
 
                         <input
-                            value={keyPath}
+                            value={keyName || keyPath}
                             readOnly
-                            placeholder="Select AWS .pem file"
+                            placeholder="No key imported"
                         />
 
                         <button
                             type="button"
                             className="secondary-button"
-                            onClick={choosePem}
+                            onClick={importPem}
                         >
-                            Browse
+                            {importingKey ? "Importing…" : "Import key"}
                         </button>
 
                     </div>

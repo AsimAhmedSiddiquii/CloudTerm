@@ -18,29 +18,49 @@ import {
 import {
   listen,
 } from "@tauri-apps/api/event";
+import { readKey } from "../services/keyVault";
 
 import "@xterm/xterm/css/xterm.css";
 
 interface Props {
+  sessionId: string;
   host: string;
   port: number;
   username: string;
-  keyPath: string;
+  keyId: string;
+  vaultPassword: string;
 
   onBack: () => void;
 
   onConnected?: () => void;
   onDisconnected?: () => void;
+  onHostKeyPrompt?: (prompt: HostKeyPrompt) => void;
+  onSplitToggle?: () => void;
+  splitMode?: boolean;
+  status?: "disconnected" | "connecting" | "connected";
+}
+
+export interface HostKeyPrompt {
+  sessionId: string;
+  host: string;
+  port: number;
+  fingerprint: string;
 }
 
 export default function TerminalView({
+  sessionId,
   host,
   port,
   username,
-  keyPath,
+  keyId,
+  vaultPassword,
   onBack,
   onConnected,
   onDisconnected,
+  onHostKeyPrompt,
+  onSplitToggle,
+  splitMode = false,
+  status = "connecting",
 }: Props) {
   const terminalContainer =
     useRef<HTMLDivElement>(null);
@@ -87,6 +107,10 @@ export default function TerminalView({
       | (() => void)
       | undefined;
 
+    let unlistenHostKey:
+      | (() => void)
+      | undefined;
+
     async function start() {
       /*
        * Listen BEFORE connecting so that we
@@ -94,7 +118,7 @@ export default function TerminalView({
        */
       unlistenOutput =
         await listen<number[]>(
-          "ssh-output",
+          `ssh-output:${sessionId}`,
           (event) => {
             terminal.write(
               new Uint8Array(
@@ -106,7 +130,7 @@ export default function TerminalView({
 
       unlistenClosed =
         await listen(
-          "ssh-closed",
+          `ssh-closed:${sessionId}`,
           () => {
             onDisconnected?.();
 
@@ -116,15 +140,30 @@ export default function TerminalView({
           }
         );
 
+      unlistenHostKey = await listen<HostKeyPrompt>(
+        "ssh-host-key",
+        (event) => {
+          if (event.payload.sessionId === sessionId) {
+            onHostKeyPrompt?.(event.payload);
+          }
+        }
+      );
+
       try {
+        const keyContents = await readKey(
+          vaultPassword,
+          keyId
+        );
+
         await invoke(
           "connect_aws_ssh",
           {
             request: {
+              sessionId,
               host,
               port,
               username,
-              keyPath,
+              keyContents,
               cols: terminal.cols,
               rows: terminal.rows,
             },
@@ -153,6 +192,7 @@ export default function TerminalView({
             await invoke(
               "ssh_input",
               {
+                sessionId,
                 data,
               }
             );
@@ -176,6 +216,7 @@ export default function TerminalView({
         invoke(
           "ssh_resize",
           {
+            sessionId,
             cols: terminal.cols,
             rows: terminal.rows,
           }
@@ -195,18 +236,21 @@ export default function TerminalView({
 
       unlistenOutput?.();
       unlistenClosed?.();
+      unlistenHostKey?.();
 
-      invoke(
-        "ssh_disconnect"
-      ).catch(() => { });
+      invoke("ssh_disconnect", { sessionId })
+        .catch(() => { });
 
       terminal.dispose();
     };
   }, [
+    sessionId,
     host,
     port,
     username,
-    keyPath,
+    keyId,
+    vaultPassword,
+    onHostKeyPrompt,
   ]);
 
   return (
@@ -217,10 +261,20 @@ export default function TerminalView({
             {username}@{host}
           </strong>
 
-          <span className="connected">
+          <span className={`terminal-status terminal-status-${status}`}>
             ● Connected
           </span>
         </div>
+
+        {onSplitToggle && (
+          <button
+            onClick={onSplitToggle}
+            className="split-button"
+            type="button"
+          >
+            {splitMode ? "Single view" : "Split view"}
+          </button>
+        )}
 
         <button
           onClick={onBack}

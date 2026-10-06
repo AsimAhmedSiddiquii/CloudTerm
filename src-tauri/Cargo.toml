@@ -28,3 +28,6 @@ tokio = { version = "1.53.2", features = ["full"] }
 russh = { version = "0.64.1", default-features = false, features = ["ring", "flate2", "rsa"] }
 tauri-plugin-dialog = "2.8.1"
 tauri-plugin-store = "2.5.0"
+aes-gcm = "0.11.1"
+argon2 = "0.6.0"
+rand = "0.10.3"
