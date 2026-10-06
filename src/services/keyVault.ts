@@ -32,3 +32,16 @@ export async function readKey(
     password,
   });
 }
+
+export async function listKeys(
+  password: string
+): Promise<ImportedKey[]> {
+  return invoke<ImportedKey[]>("vault_list_keys", { password });
+}
+
+export async function deleteKey(
+  password: string,
+  id: string
+): Promise<void> {
+  await invoke("vault_delete_key", { id, password });
+}

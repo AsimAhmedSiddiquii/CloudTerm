@@ -164,3 +164,72 @@ pub async fn read_key(
         .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
     String::from_utf8(plaintext).context("The stored SSH key is not valid text")
 }
+
+pub async fn list_keys(
+    app: AppHandle,
+    state: &VaultState,
+    password: String,
+) -> Result<Vec<VaultKey>> {
+    let _guard = state.lock.lock().await;
+    if password.trim().is_empty() {
+        anyhow::bail!("Vault password is required");
+    }
+
+    let vault = load_vault(&vault_path(&app)?)?;
+    let key = encryption_key(&password, &vault.salt)?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
+
+    if let Some(existing) = vault.entries.values().next() {
+        if existing.ciphertext.len() <= NONCE_LENGTH {
+            anyhow::bail!("The encrypted SSH key vault is corrupted");
+        }
+        cipher
+            .decrypt(
+                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &existing.ciphertext[NONCE_LENGTH..],
+            )
+            .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
+    }
+
+    Ok(vault
+        .entries
+        .into_iter()
+        .map(|(id, entry)| VaultKey { id, name: entry.name })
+        .collect())
+}
+
+pub async fn delete_key(
+    app: AppHandle,
+    state: &VaultState,
+    id: String,
+    password: String,
+) -> Result<()> {
+    let _guard = state.lock.lock().await;
+    if password.trim().is_empty() {
+        anyhow::bail!("Vault password is required");
+    }
+
+    let file_path = vault_path(&app)?;
+    let mut vault = load_vault(&file_path)?;
+    let key = encryption_key(&password, &vault.salt)?;
+    let cipher = Aes256Gcm::new_from_slice(&key)
+        .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
+
+    if let Some(existing) = vault.entries.values().next() {
+        if existing.ciphertext.len() <= NONCE_LENGTH {
+            anyhow::bail!("The encrypted SSH key vault is corrupted");
+        }
+        cipher
+            .decrypt(
+                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &existing.ciphertext[NONCE_LENGTH..],
+            )
+            .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
+    }
+
+    if vault.entries.remove(&id).is_none() {
+        anyhow::bail!("SSH key was not found in the vault");
+    }
+    save_vault(&file_path, &vault)
+}

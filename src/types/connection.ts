@@ -5,6 +5,7 @@ export interface ConnectionDraft {
   username: string;
   keyId: string;
   keyName: string;
+  commandOnConnect: string;
 }
 
 export interface SavedConnection

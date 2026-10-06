@@ -10,9 +10,11 @@ import type {
     SavedConnection,
 } from "../types/connection";
 import { importKey } from "../services/keyVault";
+import type { ImportedKey } from "../services/keyVault";
 
 interface Props {
     initialConnection?: SavedConnection | null;
+    prefill?: Partial<ConnectionDraft> | null;
 
     onConnect: (
         connection: ConnectionDraft
@@ -24,28 +26,37 @@ interface Props {
     ) => Promise<void>;
 
     onVaultPasswordChange: (password: string) => void;
+    availableKeys: ImportedKey[];
+    onKeyImported: (key: ImportedKey) => void;
 }
 
 export default function AwsConnectionForm({
     initialConnection,
+    prefill,
     onConnect,
     onSave,
     onVaultPasswordChange,
+    availableKeys,
+    onKeyImported,
 }: Props) {
     const [name, setName] = useState(
-        initialConnection?.name ?? ""
+        initialConnection?.name ?? prefill?.name ?? ""
     );
 
     const [host, setHost] = useState(
-        initialConnection?.host ?? ""
+        initialConnection?.host ?? prefill?.host ?? ""
     );
 
     const [port, setPort] = useState(
-        initialConnection?.port ?? 22
+        initialConnection?.port ?? prefill?.port ?? 22
+    );
+
+    const [commandOnConnect, setCommandOnConnect] = useState(
+        initialConnection?.commandOnConnect ?? prefill?.commandOnConnect ?? ""
     );
 
     const [username, setUsername] = useState(
-        initialConnection?.username ?? "ubuntu"
+        initialConnection?.username ?? prefill?.username ?? "ubuntu"
     );
 
     const [keyId, setKeyId] = useState(
@@ -92,6 +103,7 @@ export default function AwsConnectionForm({
                 setKeyId(imported.id);
                 setKeyName(imported.name);
                 setKeyPath(selected);
+                onKeyImported(imported);
             }
         } catch (err) {
             setError(`Unable to import key: ${String(err)}`);
@@ -162,6 +174,7 @@ export default function AwsConnectionForm({
 
             keyId,
             keyName,
+            commandOnConnect: commandOnConnect.trim(),
         };
     }
 
@@ -335,7 +348,27 @@ export default function AwsConnectionForm({
 
                     <label>Encrypted SSH Key</label>
 
-                    <div className="key-row">
+                    <div className="key-selector-row">
+                        <select
+                            value={keyId}
+                            onChange={(event) => {
+                                const selected = availableKeys.find(
+                                    (key) => key.id === event.target.value
+                                );
+                                setKeyId(event.target.value);
+                                setKeyName(selected?.name ?? "");
+                                setKeyPath("");
+                            }}
+                        >
+                            <option value="">
+                                {availableKeys.length ? "Select an imported key" : "No imported keys yet"}
+                            </option>
+                            {availableKeys.map((key) => (
+                                <option value={key.id} key={key.id}>
+                                    {key.name}
+                                </option>
+                            ))}
+                        </select>
 
                         <input
                             value={keyName || keyPath}
@@ -352,6 +385,14 @@ export default function AwsConnectionForm({
                         </button>
 
                     </div>
+
+                    <label>Command on connect <span className="optional-label">Optional</span></label>
+
+                    <input
+                        value={commandOnConnect}
+                        onChange={(event) => setCommandOnConnect(event.target.value)}
+                        placeholder="e.g. cd /var/www/app"
+                    />
 
                     {error && (
                         <div className="form-error">

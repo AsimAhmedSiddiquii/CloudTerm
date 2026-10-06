@@ -1,9 +1,19 @@
 mod ssh;
 mod vault;
+mod aws;
 
 use serde::Deserialize;
 
 use ssh::client::SshState;
+
+#[tauri::command]
+async fn aws_discover_instances(
+    request: aws::DiscoverRequest,
+) -> Result<Vec<aws::Ec2Instance>, String> {
+    aws::discover_instances(request)
+        .await
+        .map_err(|error| error.to_string())
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +23,7 @@ struct SshConnectionRequest {
     port: u16,
     username: String,
     key_contents: String,
+    command_on_connect: String,
     cols: u32,
     rows: u32,
 }
@@ -31,6 +42,7 @@ async fn connect_aws_ssh(
         request.port,
         request.username,
         request.key_contents,
+        request.command_on_connect,
         request.cols,
         request.rows,
     )
@@ -94,6 +106,52 @@ async fn ssh_host_key_decision(
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+async fn ssh_key_passphrase(
+    session_id: String,
+    passphrase: String,
+    state: tauri::State<'_, SshState>,
+) -> Result<(), String> {
+    ssh::client::key_passphrase(state.inner(), session_id, passphrase)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn sftp_list(
+    session_id: String,
+    path: String,
+    state: tauri::State<'_, SshState>,
+) -> Result<Vec<ssh::client::RemoteEntry>, String> {
+    ssh::client::sftp_list(state.inner(), session_id, path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn sftp_download(
+    session_id: String,
+    remote_path: String,
+    local_path: String,
+    state: tauri::State<'_, SshState>,
+) -> Result<(), String> {
+    ssh::client::sftp_download(state.inner(), session_id, remote_path, local_path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn sftp_upload(
+    session_id: String,
+    local_path: String,
+    remote_path: String,
+    state: tauri::State<'_, SshState>,
+) -> Result<(), String> {
+    ssh::client::sftp_upload(state.inner(), session_id, local_path, remote_path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct VaultImportRequest {
@@ -131,6 +189,29 @@ async fn vault_read_key(
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+async fn vault_list_keys(
+    password: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, vault::VaultState>,
+) -> Result<Vec<vault::VaultKey>, String> {
+    vault::list_keys(app, state.inner(), password)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn vault_delete_key(
+    id: String,
+    password: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, vault::VaultState>,
+) -> Result<(), String> {
+    vault::delete_key(app, state.inner(), id, password)
+        .await
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -148,8 +229,15 @@ pub fn run() {
                 ssh_resize,
                 ssh_disconnect,
                 ssh_host_key_decision,
+                ssh_key_passphrase,
+                sftp_list,
+                sftp_download,
+                sftp_upload,
                 vault_import_key,
                 vault_read_key,
+                vault_list_keys,
+                vault_delete_key,
+                aws_discover_instances,
             ]
         )
         .run(tauri::generate_context!())

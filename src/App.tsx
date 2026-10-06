@@ -8,7 +8,13 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import AwsConnectionForm from "./components/AwsConnectionForm";
 import TerminalView from "./components/TerminalView";
-import type { HostKeyPrompt } from "./components/TerminalView";
+import KeyManager from "./components/KeyManager";
+import SftpPanel from "./components/SftpPanel";
+import AwsDiscovery from "./components/AwsDiscovery";
+import type {
+  HostKeyPrompt,
+  KeyPassphrasePrompt,
+} from "./components/TerminalView";
 
 import { invoke } from "@tauri-apps/api/core";
 
@@ -21,6 +27,9 @@ import {
   getConnections,
   saveConnection,
 } from "./services/connectionStore";
+import { listKeys } from "./services/keyVault";
+import type { ImportedKey } from "./services/keyVault";
+import type { Ec2Instance } from "./services/aws";
 
 import type {
   ConnectionDraft,
@@ -72,8 +81,26 @@ function App() {
   const [hostKeyPrompt, setHostKeyPrompt] =
     useState<HostKeyPrompt | null>(null);
 
+  const [keyPassphrasePrompt, setKeyPassphrasePrompt] =
+    useState<KeyPassphrasePrompt | null>(null);
+
+  const [keyPassphrase, setKeyPassphrase] =
+    useState("");
+
   const [vaultPassword, setVaultPassword] =
     useState("");
+
+  const [vaultKeys, setVaultKeys] =
+    useState<ImportedKey[]>([]);
+
+  const [showKeys, setShowKeys] =
+    useState(false);
+
+  const [showSftp, setShowSftp] =
+    useState(false);
+
+  const [showDiscovery, setShowDiscovery] = useState(false);
+  const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
 
   const [splitMode, setSplitMode] =
     useState(false);
@@ -151,6 +178,8 @@ function App() {
     setSplitMode(false);
 
     setShowNewConnection(false);
+    setShowKeys(false);
+    setShowSftp(false);
   }
 
   function handleSavedSelect(
@@ -169,6 +198,8 @@ function App() {
     }
 
     setEditingConnection(null);
+    setShowKeys(false);
+    setShowSftp(false);
 
     setConnectionStatus(
       "connecting"
@@ -193,6 +224,8 @@ function App() {
     );
 
     setShowNewConnection(true);
+    setShowKeys(false);
+    setShowSftp(false);
 
     setConnectionStatus(
       "disconnected"
@@ -254,8 +287,68 @@ function App() {
     );
 
     setShowNewConnection(true);
+    setShowKeys(false);
+    setShowSftp(false);
+    setShowDiscovery(false);
+    setConnectionPrefill(null);
     setSplitConnections([]);
     setSplitMode(false);
+  }
+
+  async function refreshVaultKeys(password: string) {
+    if (!password.trim()) {
+      setVaultKeys([]);
+      return;
+    }
+
+    try {
+      setVaultKeys(await listKeys(password));
+    } catch {
+      setVaultKeys([]);
+    }
+  }
+
+  function handleVaultPasswordChange(password: string) {
+    setVaultPassword(password);
+    refreshVaultKeys(password).catch(console.error);
+  }
+
+  function openKeys() {
+    setActiveConnection(null);
+    setEditingConnection(null);
+    setSplitConnections([]);
+    setSplitMode(false);
+    setShowNewConnection(false);
+    setShowKeys(true);
+    setShowSftp(false);
+    setShowDiscovery(false);
+  }
+
+  function openDiscovery() {
+    setActiveConnection(null);
+    setEditingConnection(null);
+    setSplitConnections([]);
+    setSplitMode(false);
+    setShowNewConnection(false);
+    setShowKeys(false);
+    setShowSftp(false);
+    setShowDiscovery(true);
+    setConnectionPrefill(null);
+  }
+
+  function useDiscoveredInstance(instance: Ec2Instance) {
+    const host = instance.publicIp ?? instance.publicDns ?? instance.privateIp ?? "";
+    setConnectionPrefill({
+      name: instance.name === instance.id ? `EC2 ${instance.id}` : instance.name,
+      host,
+      port: 22,
+      username: "ubuntu",
+      keyId: "",
+      keyName: "",
+      commandOnConnect: "",
+    });
+    setShowDiscovery(false);
+    setShowNewConnection(true);
   }
 
   function toggleSplitMode() {
@@ -299,10 +392,20 @@ function App() {
         onEdit={handleEdit}
         onAdd={openNewConnection}
         onDelete={handleDelete}
+        onKeys={openKeys}
+        onDiscover={openDiscovery}
       />
 
       <main className="main-content">
-        {activeConnection ? (
+        {showDiscovery ? (
+          <AwsDiscovery onClose={() => setShowDiscovery(false)} onUseInstance={useDiscoveredInstance} />
+        ) : showKeys ? (
+          <KeyManager
+            password={vaultPassword}
+            onPasswordChange={handleVaultPasswordChange}
+            onKeysChange={setVaultKeys}
+          />
+        ) : activeConnection ? (
           <div className={`terminal-workspace ${splitMode ? "is-split" : ""}`}>
             <TerminalView
               sessionId={`primary-${activeConnection.id}`}
@@ -311,18 +414,27 @@ function App() {
               username={activeConnection.username}
               keyId={activeConnection.keyId}
               vaultPassword={vaultPassword}
+              commandOnConnect={activeConnection.commandOnConnect}
               status={connectionStatus}
               onHostKeyPrompt={setHostKeyPrompt}
+              onKeyPassphrasePrompt={(prompt) => {
+                setKeyPassphrase("");
+                setKeyPassphrasePrompt(prompt);
+              }}
               onSplitToggle={toggleSplitMode}
+              onSftpOpen={() => setShowSftp(true)}
               splitMode={splitMode}
               onConnected={() => setConnectionStatus("connected")}
               onDisconnected={() => setConnectionStatus("disconnected")}
+              onFailed={() => setConnectionStatus("failed")}
+              onRetry={() => setConnectionStatus("connecting")}
               onBack={() => {
                 setActiveConnection(null);
                 setSplitConnections([]);
                 setSplitMode(false);
                 setConnectionStatus("disconnected");
                 setShowNewConnection(false);
+                setShowSftp(false);
               }}
             />
 
@@ -335,10 +447,17 @@ function App() {
                 username={connection.username}
                 keyId={connection.keyId}
                 vaultPassword={vaultPassword}
+                commandOnConnect={connection.commandOnConnect}
                 status={splitStatuses[connection.id] ?? "connecting"}
                 onHostKeyPrompt={setHostKeyPrompt}
+                onKeyPassphrasePrompt={(prompt) => {
+                  setKeyPassphrase("");
+                  setKeyPassphrasePrompt(prompt);
+                }}
                 onConnected={() => setSplitStatus(connection.id, "connected")}
                 onDisconnected={() => setSplitStatus(connection.id, "disconnected")}
+                onFailed={() => setSplitStatus(connection.id, "failed")}
+                onRetry={() => setSplitStatus(connection.id, "connecting")}
                 onBack={() => setSplitConnections((current) =>
                   current.filter((item) => item.id !== connection.id)
                 )}
@@ -362,17 +481,29 @@ function App() {
                 + Add terminal pane
               </button>
             )}
+
+            {showSftp && (
+              <SftpPanel
+                sessionId={`primary-${activeConnection.id}`}
+                onClose={() => setShowSftp(false)}
+              />
+            )}
           </div>
         ) : showNewConnection ? (
           <AwsConnectionForm
             initialConnection={
               editingConnection
             }
+            prefill={connectionPrefill}
             onSave={handleSave}
             onConnect={
               handleConnect
             }
-            onVaultPasswordChange={setVaultPassword}
+            onVaultPasswordChange={handleVaultPasswordChange}
+            availableKeys={vaultKeys}
+            onKeyImported={(key) => {
+              setVaultKeys((current) => [...current, key]);
+            }}
           />
         ) : (
           <div className="welcome-page">
@@ -432,6 +563,61 @@ function App() {
                 }}
               >
                 Trust & connect
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {keyPassphrasePrompt && (
+        <div className="modal-backdrop">
+          <section className="trust-dialog passphrase-dialog" role="dialog" aria-modal="true">
+            <div className="trust-dialog-icon key-icon">⌑</div>
+            <p className="eyebrow">ENCRYPTED SSH KEY</p>
+            <h2>Unlock private key</h2>
+            <p>
+              This key is protected with a passphrase. It will be used only for this connection and will not be saved.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              value={keyPassphrase}
+              onChange={(event) => setKeyPassphrase(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  invoke("ssh_key_passphrase", {
+                    sessionId: keyPassphrasePrompt.sessionId,
+                    passphrase: keyPassphrase,
+                  }).catch(console.error);
+                  setKeyPassphrasePrompt(null);
+                }
+              }}
+              placeholder="SSH key passphrase"
+            />
+            <div className="trust-actions">
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  invoke("ssh_key_passphrase", {
+                    sessionId: keyPassphrasePrompt.sessionId,
+                    passphrase: "",
+                  }).catch(console.error);
+                  setKeyPassphrasePrompt(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => {
+                  invoke("ssh_key_passphrase", {
+                    sessionId: keyPassphrasePrompt.sessionId,
+                    passphrase: keyPassphrase,
+                  }).catch(console.error);
+                  setKeyPassphrasePrompt(null);
+                }}
+              >
+                Unlock key
               </button>
             </div>
           </section>

@@ -5,7 +5,8 @@ import cloudTermIcon from "../assets/cloudterm-icon.png";
 export type ConnectionStatus =
   | "disconnected"
   | "connecting"
-  | "connected";
+  | "connected"
+  | "failed";
 
 interface Props {
   connections: SavedConnection[];
@@ -16,6 +17,8 @@ interface Props {
   onEdit: (connection: SavedConnection) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
+  onKeys: () => void;
+  onDiscover: () => void;
 }
 
 export default function Sidebar({
@@ -26,10 +29,16 @@ export default function Sidebar({
   onEdit,
   onDelete,
   onAdd,
+  onKeys,
+  onDiscover,
 }: Props) {
   function getStatusClass(id: string) {
     if (activeId !== id) {
       return "status-disconnected";
+    }
+
+    if (status === "failed") {
+      return "status-failed";
     }
 
     if (status === "connected") {
@@ -68,6 +77,16 @@ export default function Sidebar({
         onClick={onAdd}
       >
         + New Connection
+      </button>
+
+      <button className="keys-nav-button" type="button" onClick={onKeys}>
+        <span>⌁</span>
+        SSH Keys
+      </button>
+
+      <button className="keys-nav-button discovery-nav-button" type="button" onClick={onDiscover}>
+        <span>⌁</span>
+        Discover EC2
       </button>
 
       <div className="sidebar-section">

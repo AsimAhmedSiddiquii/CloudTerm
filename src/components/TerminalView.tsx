@@ -1,6 +1,7 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -29,15 +30,20 @@ interface Props {
   username: string;
   keyId: string;
   vaultPassword: string;
+  commandOnConnect: string;
 
   onBack: () => void;
 
   onConnected?: () => void;
   onDisconnected?: () => void;
+  onFailed?: () => void;
+  onRetry?: () => void;
   onHostKeyPrompt?: (prompt: HostKeyPrompt) => void;
+  onKeyPassphrasePrompt?: (prompt: KeyPassphrasePrompt) => void;
   onSplitToggle?: () => void;
+  onSftpOpen?: () => void;
   splitMode?: boolean;
-  status?: "disconnected" | "connecting" | "connected";
+  status?: "disconnected" | "connecting" | "connected" | "failed";
 }
 
 export interface HostKeyPrompt {
@@ -47,6 +53,10 @@ export interface HostKeyPrompt {
   fingerprint: string;
 }
 
+export interface KeyPassphrasePrompt {
+  sessionId: string;
+}
+
 export default function TerminalView({
   sessionId,
   host,
@@ -54,14 +64,20 @@ export default function TerminalView({
   username,
   keyId,
   vaultPassword,
+  commandOnConnect,
   onBack,
   onConnected,
   onDisconnected,
+  onFailed,
+  onRetry,
   onHostKeyPrompt,
+  onKeyPassphrasePrompt,
   onSplitToggle,
+  onSftpOpen,
   splitMode = false,
   status = "connecting",
 }: Props) {
+  const [retryCount, setRetryCount] = useState(0);
   const terminalContainer =
     useRef<HTMLDivElement>(null);
 
@@ -111,6 +127,10 @@ export default function TerminalView({
       | (() => void)
       | undefined;
 
+    let unlistenKeyPassphrase:
+      | (() => void)
+      | undefined;
+
     async function start() {
       /*
        * Listen BEFORE connecting so that we
@@ -149,6 +169,15 @@ export default function TerminalView({
         }
       );
 
+      unlistenKeyPassphrase = await listen<KeyPassphrasePrompt>(
+        "ssh-key-passphrase",
+        (event) => {
+          if (event.payload.sessionId === sessionId) {
+            onKeyPassphrasePrompt?.(event.payload);
+          }
+        }
+      );
+
       try {
         const keyContents = await readKey(
           vaultPassword,
@@ -164,6 +193,7 @@ export default function TerminalView({
               port,
               username,
               keyContents,
+              commandOnConnect,
               cols: terminal.cols,
               rows: terminal.rows,
             },
@@ -172,7 +202,7 @@ export default function TerminalView({
 
         onConnected?.();
       } catch (error) {
-        onDisconnected?.();
+        onFailed?.();
 
         terminal.write(
           `\r\n\x1b[31mConnection failed: ${String(
@@ -237,6 +267,7 @@ export default function TerminalView({
       unlistenOutput?.();
       unlistenClosed?.();
       unlistenHostKey?.();
+      unlistenKeyPassphrase?.();
 
       invoke("ssh_disconnect", { sessionId })
         .catch(() => { });
@@ -250,7 +281,10 @@ export default function TerminalView({
     username,
     keyId,
     vaultPassword,
+    commandOnConnect,
     onHostKeyPrompt,
+    onKeyPassphrasePrompt,
+    retryCount,
   ]);
 
   return (
@@ -273,6 +307,29 @@ export default function TerminalView({
             type="button"
           >
             {splitMode ? "Single view" : "Split view"}
+          </button>
+        )}
+
+        {onSftpOpen && (
+          <button
+            onClick={onSftpOpen}
+            className="split-button"
+            type="button"
+          >
+            Files
+          </button>
+        )}
+
+        {status === "failed" && (
+          <button
+            onClick={() => {
+              onRetry?.();
+              setRetryCount((count) => count + 1);
+            }}
+            className="split-button"
+            type="button"
+          >
+            Reconnect
           </button>
         )}
 

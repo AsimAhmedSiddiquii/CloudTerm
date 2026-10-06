@@ -13,6 +13,11 @@ The current version focuses on **AWS EC2 SSH connections** using PEM/private key
 - Persistent AWS connection sidebar
 - Edit and delete saved connections
 - Connection status indicators
+- Host-key fingerprint verification with `known_hosts` support
+- Encrypted local SSH key vault with passphrase-protected key support
+- Up to four split terminal panes
+- SFTP browser with upload and download
+- Optional AWS EC2 instance discovery from the local AWS credential chain
 - Native desktop file picker for SSH keys
 - Windows desktop application via Tauri
 
@@ -114,7 +119,9 @@ Create a new AWS connection and enter:
 - EC2 public IP or hostname
 - SSH port, normally `22`
 - SSH username
-- PEM/private key file
+- An imported SSH key selected from the encrypted vault
+
+Use **Discover EC2** in the sidebar to query instances using the standard AWS SDK credential chain. You can optionally enter an AWS profile and region. Selecting an instance opens a prefilled connection form; CloudTerm still requires you to choose the SSH key and username before connecting.
 
 Common AWS usernames include:
 
@@ -215,19 +222,12 @@ Unsigned development builds may trigger Microsoft SmartScreen warnings. Code sig
 
 CloudTerm currently stores saved connection metadata locally.
 
-The application currently references the selected PEM/private key by its filesystem path. The PEM contents are not stored inside the connection JSON.
+Imported private keys are encrypted in the application data directory and connections store only a vault key identifier. The vault password is not persisted. Passphrases for encrypted OpenSSH keys are requested only for the active connection.
 
-Planned security improvements include:
+Remaining security improvements include:
 
-- Encrypted SSH key vault
-- Tauri Stronghold integration
-- Host key fingerprint verification
-- `known_hosts` support
-- Passphrase-protected private keys
 - Windows Hello / biometric vault unlock
 - SSH agent support
-
-> The current SSH host-key handler is still intended for development. Proper server fingerprint verification should be implemented before CloudTerm is distributed as a production SSH client.
 
 ## Roadmap
 
@@ -239,15 +239,15 @@ Planned security improvements include:
 - [x] Sidebar connection manager
 - [x] Edit/delete connection
 - [x] Connection status
-- [ ] Encrypted SSH key vault
-- [ ] Host fingerprint verification
-- [ ] Multiple terminal tabs
-- [ ] SFTP browser
+- [x] Encrypted SSH key vault
+- [x] Host fingerprint verification
+- [x] Multiple terminal panes
+- [x] SFTP browser
 - [ ] SSH port forwarding
 - [ ] Bastion / jump host support
 - [ ] Import from `~/.ssh/config`
-- [ ] AWS account integration
-- [ ] Automatic EC2 discovery
+- [x] AWS account integration
+- [x] Automatic EC2 discovery
 
 ### Future Cloud Providers
 
