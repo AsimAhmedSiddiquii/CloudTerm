@@ -11,6 +11,7 @@ import TerminalView from "./components/TerminalView";
 import KeyManager from "./components/KeyManager";
 import SftpPanel from "./components/SftpPanel";
 import AwsDiscovery from "./components/AwsDiscovery";
+import SshConfigImport from "./components/SshConfigImport";
 import type {
   HostKeyPrompt,
   KeyPassphrasePrompt,
@@ -30,6 +31,7 @@ import {
 import { listKeys } from "./services/keyVault";
 import type { ImportedKey } from "./services/keyVault";
 import type { Ec2Instance } from "./services/aws";
+import type { SshConfigEntry } from "./services/sshConfig";
 
 import type {
   ConnectionDraft,
@@ -100,6 +102,7 @@ function App() {
     useState(false);
 
   const [showDiscovery, setShowDiscovery] = useState(false);
+  const [showSshConfig, setShowSshConfig] = useState(false);
   const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
 
   const [splitMode, setSplitMode] =
@@ -292,6 +295,7 @@ function App() {
     setShowKeys(false);
     setShowSftp(false);
     setShowDiscovery(false);
+    setShowSshConfig(false);
     setConnectionPrefill(null);
     setSplitConnections([]);
     setSplitMode(false);
@@ -324,6 +328,7 @@ function App() {
     setShowKeys(true);
     setShowSftp(false);
     setShowDiscovery(false);
+    setShowSshConfig(false);
   }
 
   function openDiscovery() {
@@ -335,7 +340,35 @@ function App() {
     setShowKeys(false);
     setShowSftp(false);
     setShowDiscovery(true);
+    setShowSshConfig(false);
     setConnectionPrefill(null);
+  }
+
+  function openSshConfig() {
+    setActiveConnection(null);
+    setEditingConnection(null);
+    setSplitConnections([]);
+    setSplitMode(false);
+    setShowNewConnection(false);
+    setShowKeys(false);
+    setShowSftp(false);
+    setShowDiscovery(false);
+    setShowSshConfig(true);
+    setConnectionPrefill(null);
+  }
+
+  function useSshConfigEntry(entry: SshConfigEntry) {
+    setConnectionPrefill({
+      name: entry.alias,
+      host: entry.host,
+      port: entry.port,
+      username: entry.username ?? "ubuntu",
+      keyId: "",
+      keyName: entry.identityFiles[0] ?? "",
+      commandOnConnect: "",
+    });
+    setShowSshConfig(false);
+    setShowNewConnection(true);
   }
 
   function useDiscoveredInstance(instance: Ec2Instance) {
@@ -396,10 +429,13 @@ function App() {
         onDelete={handleDelete}
         onKeys={openKeys}
         onDiscover={openDiscovery}
+        onImportConfig={openSshConfig}
       />
 
       <main className="main-content">
-        {showDiscovery ? (
+        {showSshConfig ? (
+          <SshConfigImport onClose={() => setShowSshConfig(false)} onUseEntry={useSshConfigEntry} />
+        ) : showDiscovery ? (
           <AwsDiscovery onClose={() => setShowDiscovery(false)} onUseInstance={useDiscoveredInstance} />
         ) : showKeys ? (
           <KeyManager

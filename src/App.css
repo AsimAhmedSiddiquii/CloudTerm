@@ -1642,6 +1642,7 @@ body {
 .instance-state { padding: 4px 9px; border-radius: 999px; color: #b8f4d0; background: rgba(61, 194, 124, .14); font-size: 11px; text-transform: uppercase; }
 .state-stopped, .state-terminated { color: #ffbea9; background: rgba(255, 111, 83, .14); }
 .empty-state { padding: 42px 20px; border: 1px dashed var(--border); border-radius: 16px; color: var(--muted); text-align: center; }
+.discovery-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
 
 @media (max-width: 760px) {
   .discovery-controls { grid-template-columns: 1fr; }

@@ -1,6 +1,7 @@
 mod ssh;
 mod vault;
 mod aws;
+mod ssh_config;
 
 use serde::Deserialize;
 
@@ -13,6 +14,11 @@ async fn aws_discover_instances(
     aws::discover_instances(request)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn ssh_config_entries() -> Result<Vec<ssh_config::SshConfigEntry>, String> {
+    ssh_config::list_entries().map_err(|error| error.to_string())
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,6 +244,7 @@ pub fn run() {
                 vault_list_keys,
                 vault_delete_key,
                 aws_discover_instances,
+                ssh_config_entries,
             ]
         )
         .run(tauri::generate_context!())

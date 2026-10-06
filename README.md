@@ -18,6 +18,7 @@ The current version focuses on **AWS EC2 SSH connections** using PEM/private key
 - Up to four split terminal panes
 - SFTP browser with upload and download
 - Optional AWS EC2 instance discovery from the local AWS credential chain
+- Import of common host entries from `~/.ssh/config`
 - Native desktop file picker for SSH keys
 - Windows desktop application via Tauri
 
@@ -142,6 +143,8 @@ You can either:
 
 Saved connections appear in the AWS section of the sidebar.
 
+Use **Import SSH config** to read host aliases from your local `~/.ssh/config`. CloudTerm imports the host, port, username, and identity-file hint into a new connection form; private keys must still be imported into the encrypted vault before connecting.
+
 ## Build an Installable Desktop Application
 
 First make sure the development build works:
@@ -245,7 +248,7 @@ Remaining security improvements include:
 - [x] SFTP browser
 - [ ] SSH port forwarding
 - [ ] Bastion / jump host support
-- [ ] Import from `~/.ssh/config`
+- [x] Import from `~/.ssh/config`
 - [x] AWS account integration
 - [x] Automatic EC2 discovery
 

@@ -19,6 +19,7 @@ interface Props {
   onAdd: () => void;
   onKeys: () => void;
   onDiscover: () => void;
+  onImportConfig: () => void;
 }
 
 export default function Sidebar({
@@ -31,6 +32,7 @@ export default function Sidebar({
   onAdd,
   onKeys,
   onDiscover,
+  onImportConfig,
 }: Props) {
   function getStatusClass(id: string) {
     if (activeId !== id) {
@@ -87,6 +89,11 @@ export default function Sidebar({
       <button className="keys-nav-button discovery-nav-button" type="button" onClick={onDiscover}>
         <span>⌁</span>
         Discover EC2
+      </button>
+
+      <button className="keys-nav-button" type="button" onClick={onImportConfig}>
+        <span>⌘</span>
+        Import SSH config
       </button>
 
       <div className="sidebar-section">
