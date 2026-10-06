@@ -80,6 +80,14 @@ export default function TerminalView({
   const [retryCount, setRetryCount] = useState(0);
   const terminalContainer =
     useRef<HTMLDivElement>(null);
+  const lifecycleCallbacks = useRef({
+    onConnected,
+    onDisconnected,
+    onFailed,
+  });
+  useEffect(() => {
+    lifecycleCallbacks.current = { onConnected, onDisconnected, onFailed };
+  }, [onConnected, onDisconnected, onFailed]);
 
   useEffect(() => {
     if (!terminalContainer.current) {
@@ -152,7 +160,7 @@ export default function TerminalView({
         await listen(
           `ssh-closed:${sessionId}`,
           () => {
-            onDisconnected?.();
+            lifecycleCallbacks.current.onDisconnected?.();
 
             terminal.write(
               "\r\n\x1b[31mConnection closed.\x1b[0m\r\n"
@@ -200,9 +208,9 @@ export default function TerminalView({
           }
         );
 
-        onConnected?.();
+        lifecycleCallbacks.current.onConnected?.();
       } catch (error) {
-        onFailed?.();
+        lifecycleCallbacks.current.onFailed?.();
 
         terminal.write(
           `\r\n\x1b[31mConnection failed: ${String(

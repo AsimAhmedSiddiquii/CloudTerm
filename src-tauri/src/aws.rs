@@ -89,3 +89,39 @@ pub async fn discover_instances(request: DiscoverRequest) -> Result<Vec<Ec2Insta
     instances.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
     Ok(instances)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn discovery_request_uses_frontend_field_names() {
+        let request: DiscoverRequest = serde_json::from_str(
+            r#"{"profile":"production","region":"eu-west-1"}"#,
+        )
+        .expect("camelCase request should deserialize");
+
+        assert_eq!(request.profile.as_deref(), Some("production"));
+        assert_eq!(request.region.as_deref(), Some("eu-west-1"));
+    }
+
+    #[test]
+    fn instance_metadata_serializes_for_the_discovery_cards() {
+        let instance = Ec2Instance {
+            id: "i-123".to_owned(),
+            name: "Production".to_owned(),
+            state: "running".to_owned(),
+            instance_type: "t3.small".to_owned(),
+            region: "us-east-1".to_owned(),
+            availability_zone: "us-east-1a".to_owned(),
+            public_ip: Some("203.0.113.10".to_owned()),
+            private_ip: Some("10.0.0.4".to_owned()),
+            public_dns: None,
+        };
+
+        let json = serde_json::to_value(instance).expect("instance should serialize");
+        assert_eq!(json["instanceType"], "t3.small");
+        assert_eq!(json["publicIp"], "203.0.113.10");
+        assert_eq!(json["availabilityZone"], "us-east-1a");
+    }
+}

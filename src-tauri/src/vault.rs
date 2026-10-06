@@ -72,6 +72,10 @@ fn encryption_key(password: &str, salt: &[u8]) -> Result<[u8; 32]> {
     Ok(key)
 }
 
+fn nonce(bytes: &[u8]) -> Result<Nonce<aes_gcm::aead::consts::U12>> {
+    Nonce::try_from(bytes).map_err(|_| anyhow::anyhow!("Invalid encryption nonce"))
+}
+
 pub async fn import_key(
     app: AppHandle,
     state: &VaultState,
@@ -103,7 +107,7 @@ pub async fn import_key(
         }
         cipher
             .decrypt(
-                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &nonce(&existing.ciphertext[..NONCE_LENGTH])?,
                 &existing.ciphertext[NONCE_LENGTH..],
             )
             .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
@@ -111,7 +115,7 @@ pub async fn import_key(
     let mut nonce_bytes = [0u8; NONCE_LENGTH];
     rand::rng().fill(&mut nonce_bytes);
     let ciphertext = cipher
-        .encrypt(Nonce::from_slice(&nonce_bytes), source.as_bytes())
+        .encrypt(&nonce(&nonce_bytes)?, source.as_bytes())
         .map_err(|_| anyhow::anyhow!("Unable to encrypt SSH key"))?;
 
     let mut id_bytes = [0u8; 16];
@@ -158,7 +162,7 @@ pub async fn read_key(
 
     let plaintext = cipher
         .decrypt(
-            Nonce::from_slice(&entry.ciphertext[..NONCE_LENGTH]),
+            &nonce(&entry.ciphertext[..NONCE_LENGTH])?,
             &entry.ciphertext[NONCE_LENGTH..],
         )
         .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
@@ -186,7 +190,7 @@ pub async fn list_keys(
         }
         cipher
             .decrypt(
-                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &nonce(&existing.ciphertext[..NONCE_LENGTH])?,
                 &existing.ciphertext[NONCE_LENGTH..],
             )
             .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
@@ -222,7 +226,7 @@ pub async fn delete_key(
         }
         cipher
             .decrypt(
-                Nonce::from_slice(&existing.ciphertext[..NONCE_LENGTH]),
+                &nonce(&existing.ciphertext[..NONCE_LENGTH])?,
                 &existing.ciphertext[NONCE_LENGTH..],
             )
             .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;

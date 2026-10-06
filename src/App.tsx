@@ -111,7 +111,9 @@ function App() {
   const [splitStatuses, setSplitStatuses] =
     useState<Record<string, ConnectionStatus>>({});
 
+  // Intentional mount-time synchronization with the persistent store.
   useEffect(() => {
+    // oxlint-disable-next-line react-hooks/set-state-in-effect
     refreshConnections().catch(
       console.error
     );

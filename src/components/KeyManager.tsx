@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   deleteKey,
@@ -21,7 +21,7 @@ export default function KeyManager({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     if (!password) {
       setKeys([]);
       return;
@@ -38,11 +38,13 @@ export default function KeyManager({
     } finally {
       setLoading(false);
     }
-  }
+  }, [onKeysChange, password]);
 
   useEffect(() => {
+    // This effect intentionally synchronizes the unlocked view with the password.
+    // oxlint-disable-next-line react-hooks/set-state-in-effect
     refresh().catch(() => { });
-  }, [password]);
+  }, [refresh]);
 
   async function remove(key: ImportedKey) {
     if (!window.confirm(`Delete "${key.name}" from the encrypted vault?`)) {
