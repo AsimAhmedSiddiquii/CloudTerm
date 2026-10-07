@@ -29,6 +29,7 @@ import {
   deleteConnection,
   getConnections,
   saveConnection,
+  saveConnections,
 } from "./services/connectionStore";
 import { listKeys } from "./services/keyVault";
 import type { ImportedKey } from "./services/keyVault";
@@ -396,10 +397,11 @@ function App() {
 
   async function importConnections(imported: BackupConnection[]) {
     try {
-      for (const connection of imported) await saveConnection(connection);
+      await saveConnections(imported);
       await refreshConnections();
     } catch (error) {
       setStorageError(errorMessage(error, "Unable to import the selected connections."));
+      throw error;
     }
   }
 

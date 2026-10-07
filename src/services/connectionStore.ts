@@ -69,10 +69,18 @@ export async function getConnections(): Promise<
 export async function saveConnection(
   connection: SavedConnection
 ) {
-  const normalized = normalizeConnection(connection);
-  if (!normalized) {
-    throw new Error("Connection host and username are required.");
+  await saveConnections([connection]);
+}
+
+export async function saveConnections(
+  incoming: SavedConnection[]
+) {
+  const normalizedConnections = incoming.map(normalizeConnection);
+  if (normalizedConnections.some((connection) => connection === null)) {
+    throw new Error("Every connection must include a host and username.");
   }
+
+  const normalized = normalizedConnections as SavedConnection[];
   const store = await getStore();
 
   const connections =
@@ -80,15 +88,14 @@ export async function saveConnection(
       CONNECTIONS_KEY
     )) ?? [];
 
-  const existingIndex =
-    connections.findIndex(
-      (item) => item.id === normalized.id
-    );
+  for (const connection of normalized) {
+    const existingIndex = connections.findIndex((item) => item.id === connection.id);
 
-  if (existingIndex >= 0) {
-    connections[existingIndex] = normalized;
-  } else {
-    connections.push(normalized);
+    if (existingIndex >= 0) {
+      connections[existingIndex] = connection;
+    } else {
+      connections.push(connection);
+    }
   }
 
   await store.set(
