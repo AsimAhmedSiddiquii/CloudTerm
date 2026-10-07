@@ -24,6 +24,7 @@ export default function KeyManager({
   const refresh = useCallback(async () => {
     if (!password) {
       setKeys([]);
+      onKeysChange([]);
       return;
     }
 
@@ -34,6 +35,8 @@ export default function KeyManager({
       setKeys(next);
       onKeysChange(next);
     } catch (err) {
+      setKeys([]);
+      onKeysChange([]);
       setError(String(err));
     } finally {
       setLoading(false);
