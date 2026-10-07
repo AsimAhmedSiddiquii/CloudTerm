@@ -22,6 +22,8 @@ use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use russh_sftp::client::SftpSession;
 
+const PROMPT_TIMEOUT: Duration = Duration::from_secs(300);
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HostKeyPrompt {
@@ -87,7 +89,10 @@ impl client::Handler for Client {
         let _ = self.app.emit("ssh-host-key", &prompt);
 
         let accepted = match self.decision.take() {
-            Some(receiver) => receiver.await.unwrap_or(false),
+            Some(receiver) => match tokio::time::timeout(PROMPT_TIMEOUT, receiver).await {
+                Ok(result) => result.unwrap_or(false),
+                Err(_) => false,
+            },
             None => false,
         };
 
@@ -146,10 +151,13 @@ async fn decode_key(
                 "ssh-key-passphrase",
                 KeyPassphrasePrompt { session_id: session_id.to_owned() },
             );
-            let passphrase_result = passphrase_rx.await;
+            let passphrase_result = tokio::time::timeout(PROMPT_TIMEOUT, passphrase_rx).await;
             state.pending_key_passphrases.lock().await.remove(session_id);
-            let passphrase = passphrase_result
-                .map_err(|_| anyhow::anyhow!("SSH key passphrase prompt was cancelled"))?;
+            let passphrase = match passphrase_result {
+                Ok(Ok(passphrase)) => passphrase,
+                Ok(Err(_)) => bail!("SSH key passphrase prompt was cancelled"),
+                Err(_) => bail!("SSH key passphrase prompt timed out after 300 seconds"),
+            };
             decode_secret_key(key_contents, Some(&passphrase))
                 .context("Unable to decode the SSH key with that passphrase")
         }
