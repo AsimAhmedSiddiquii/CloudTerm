@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -28,20 +28,25 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [transfer, setTransfer] = useState<"upload" | "download" | null>(null);
+  const refreshGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     try {
       setLoading(true);
       setError("");
       setSuccess("");
-      setEntries(await invoke<RemoteEntry[]>("sftp_list", {
+      const nextEntries = await invoke<RemoteEntry[]>("sftp_list", {
         sessionId,
         path,
-      }));
+      });
+      if (generation !== refreshGeneration.current) return;
+      setEntries(nextEntries);
     } catch (err) {
+      if (generation !== refreshGeneration.current) return;
       setError(String(err));
     } finally {
-      setLoading(false);
+      if (generation === refreshGeneration.current) setLoading(false);
     }
   }, [path, sessionId]);
 
@@ -49,6 +54,9 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     // This effect intentionally refreshes the remote directory when its path changes.
     // oxlint-disable-next-line react-hooks/set-state-in-effect
     refresh().catch(() => { });
+    return () => {
+      refreshGeneration.current += 1;
+    };
   }, [refresh]);
 
   async function download(entry: RemoteEntry) {
