@@ -192,6 +192,16 @@ export default function AwsConnectionForm({
             return null;
         }
 
+        if (!Number.isInteger(connectTimeoutSeconds) || connectTimeoutSeconds < 5 || connectTimeoutSeconds > 300) {
+            setError("Connection timeout must be between 5 and 300 seconds.");
+            return null;
+        }
+
+        if (!Number.isInteger(keepAliveSeconds) || keepAliveSeconds < 5 || keepAliveSeconds > 3600) {
+            setError("Keep-alive interval must be between 5 and 3600 seconds.");
+            return null;
+        }
+
         let bastion: BastionConfig | undefined;
         if (useBastion) {
             if (
