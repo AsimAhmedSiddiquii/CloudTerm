@@ -294,15 +294,20 @@ Remaining security improvements include:
 
 Before publishing CloudTerm publicly:
 
-1. Add encrypted private-key storage.
-2. Implement SSH host-key verification.
-3. Add application icons.
-4. Add proper semantic versioning.
-5. Add Windows code signing.
-6. Test installer upgrades/uninstalls.
-7. Test on a clean Windows machine.
-8. Build macOS and Linux packages.
-9. Add automatic updates.
+Completed for v0.1:
+
+- Encrypted private-key storage and host-key verification
+- Application icons and semantic versioning
+- Windows release workflow and portable package generation
+
+Remaining before a broad public distribution:
+
+1. Configure Windows code signing and update signing.
+2. Run installer upgrade/uninstall tests.
+3. Test on a clean Windows machine with WebView2 and VC++ runtime prerequisites.
+4. Build and verify macOS and Linux packages.
+5. Add signed automatic updates.
+6. Complete the deferred end-to-end test pass, including SSH, SFTP, forwarding, and backup/restore flows.
 
 The repository includes a Windows release workflow that automates the build and artifact upload. Code signing and update signing still need to be configured before public distribution.
 
