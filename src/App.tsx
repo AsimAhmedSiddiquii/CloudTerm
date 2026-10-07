@@ -138,16 +138,16 @@ function App() {
   const [vaultSetupError, setVaultSetupError] = useState("");
   const [vaultSetupLoading, setVaultSetupLoading] = useState(false);
 
-  const keyUsageCounts = connections.reduce<Record<string, number>>((counts, connection) => {
+  const keyUsageCounts = connections.reduce<Map<string, number>>((counts, connection) => {
     const usedKeyIds = new Set([connection.keyId]);
     if (connection.bastion) {
       usedKeyIds.add(connection.bastion.keyId);
     }
     for (const keyId of usedKeyIds) {
-      counts[keyId] = (counts[keyId] ?? 0) + 1;
+      counts.set(keyId, (counts.get(keyId) ?? 0) + 1);
     }
     return counts;
-  }, Object.create(null) as Record<string, number>);
+  }, new Map<string, number>());
 
   const [splitMode, setSplitMode] =
     useState(false);

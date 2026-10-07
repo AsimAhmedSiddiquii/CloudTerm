@@ -10,14 +10,14 @@ interface Props {
   password: string;
   onPasswordChange: (password: string) => void;
   onKeysChange: (keys: ImportedKey[]) => void;
-  keyUsageCounts?: Readonly<Record<string, number>>;
+  keyUsageCounts?: ReadonlyMap<string, number>;
 }
 
 export default function KeyManager({
   password,
   onPasswordChange,
   onKeysChange,
-  keyUsageCounts = {},
+  keyUsageCounts = new Map(),
 }: Props) {
   const [keys, setKeys] = useState<ImportedKey[]>([]);
   const [error, setError] = useState("");
@@ -51,7 +51,7 @@ export default function KeyManager({
   }, [onKeysChange, password]);
 
   async function remove(key: ImportedKey) {
-    const usageCount = keyUsageCounts[key.id] ?? 0;
+    const usageCount = keyUsageCounts?.get(key.id) ?? 0;
     const usageWarning = usageCount > 0
       ? ` It is referenced by ${usageCount} saved connection${usageCount === 1 ? "" : "s"}.`
       : "";
