@@ -309,18 +309,18 @@ Completed for v0.1:
 - Application icons and semantic versioning
 - Content Security Policy for the production webview
 - Frontend prototype-pollution hardening
-- Windows release workflow and portable package generation
+- Windows, macOS, and Linux release workflow plus portable package generation
 
 Remaining before a broad public distribution:
 
 1. Configure Windows code signing and update signing.
 2. Run installer upgrade/uninstall tests.
 3. Test on a clean Windows machine with WebView2 and VC++ runtime prerequisites.
-4. Build and verify macOS and Linux packages.
+4. Verify the macOS and Linux packages produced by the release workflow.
 5. Add signed automatic updates.
 6. Complete the deferred end-to-end test pass, including SSH, SFTP, forwarding, and backup/restore flows.
 
-The repository includes a Windows release workflow that automates the build and artifact upload. Code signing and update signing still need to be configured before public distribution.
+The repository includes a cross-platform release workflow that automates Windows, macOS, and Linux builds plus checksum manifests. Code signing and update signing still need to be configured before public distribution.
 
 ## License
 
