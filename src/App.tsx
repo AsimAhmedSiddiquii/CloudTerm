@@ -41,6 +41,12 @@ import type {
   SavedConnection,
 } from "./types/connection";
 
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim()
+    ? error.message
+    : fallback;
+}
+
 function App() {
   const [
     connections,
@@ -61,10 +67,13 @@ function App() {
   ] = useState(true);
 
   async function refreshConnections() {
-    const saved =
-      await getConnections();
-
-    setConnections(saved);
+    try {
+      const saved = await getConnections();
+      setConnections(saved);
+      setStorageError(null);
+    } catch (error) {
+      setStorageError(errorMessage(error, "Unable to load saved connections."));
+    }
   }
 
   const [
@@ -109,6 +118,7 @@ function App() {
   const [showSshConfig, setShowSshConfig] = useState(false);
   const [showBackup, setShowBackup] = useState(false);
   const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   const [splitMode, setSplitMode] =
     useState(false);
@@ -131,44 +141,33 @@ function App() {
     draft: ConnectionDraft,
     existingId?: string
   ) {
-    let connection: SavedConnection;
+    try {
+      let connection: SavedConnection;
 
-    if (existingId) {
-      const old =
-        connections.find(
-          (item) =>
-            item.id === existingId
-        );
+      if (existingId) {
+        const old = connections.find((item) => item.id === existingId);
 
-      connection = {
-        ...draft,
+        connection = {
+          ...draft,
+          id: existingId,
+          provider: "aws",
+          createdAt: old?.createdAt ?? new Date().toISOString(),
+        };
+      } else {
+        connection = {
+          ...draft,
+          id: crypto.randomUUID(),
+          provider: "aws",
+          createdAt: new Date().toISOString(),
+        };
+      }
 
-        id: existingId,
-
-        provider: "aws",
-
-        createdAt:
-          old?.createdAt ??
-          new Date().toISOString(),
-      };
-    } else {
-      connection = {
-        ...draft,
-
-        id: crypto.randomUUID(),
-
-        provider: "aws",
-
-        createdAt:
-          new Date().toISOString(),
-      };
+      await saveConnection(connection);
+      await refreshConnections();
+      setEditingConnection(null);
+    } catch (error) {
+      setStorageError(errorMessage(error, "Unable to save this connection."));
     }
-
-    await saveConnection(connection);
-
-    await refreshConnections();
-
-    setEditingConnection(null);
   }
 
   function handleConnect(
@@ -266,29 +265,24 @@ function App() {
       return;
     }
 
-    await deleteConnection(id);
+    try {
+      await deleteConnection(id);
 
-    if (
-      activeConnection?.id === id
-    ) {
-      setActiveConnection(null);
+      if (activeConnection?.id === id) {
+        setActiveConnection(null);
+        setConnectionStatus("disconnected");
+      }
 
-      setConnectionStatus(
-        "disconnected"
-      );
+      setSplitConnections((current) => current.filter((item) => item.id !== id));
+
+      if (editingConnection?.id === id) {
+        setEditingConnection(null);
+      }
+
+      await refreshConnections();
+    } catch (error) {
+      setStorageError(errorMessage(error, "Unable to delete this connection."));
     }
-
-    setSplitConnections((current) =>
-      current.filter((item) => item.id !== id)
-    );
-
-    if (
-      editingConnection?.id === id
-    ) {
-      setEditingConnection(null);
-    }
-
-    await refreshConnections();
   }
 
   function openNewConnection() {
@@ -397,8 +391,12 @@ function App() {
   }
 
   async function importConnections(imported: BackupConnection[]) {
-    for (const connection of imported) await saveConnection(connection);
-    await refreshConnections();
+    try {
+      for (const connection of imported) await saveConnection(connection);
+      await refreshConnections();
+    } catch (error) {
+      setStorageError(errorMessage(error, "Unable to import the selected connections."));
+    }
   }
 
   function useDiscoveredInstance(instance: Ec2Instance) {
@@ -464,6 +462,19 @@ function App() {
       />
 
       <main className="main-content">
+        {storageError && (
+          <div className="persistence-notice" role="alert">
+            <span>{storageError}</span>
+            <button
+              type="button"
+              onClick={() => setStorageError(null)}
+              aria-label="Dismiss storage error"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {showBackup ? (
           <ConnectionBackup connections={connections} onImport={importConnections} onClose={() => setShowBackup(false)} />
         ) : showSshConfig ? (

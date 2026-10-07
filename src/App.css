@@ -58,6 +58,31 @@ input {
   background: #0d1117;
 }
 
+.persistence-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 20px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 10px;
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.32);
+  font-size: 13px;
+}
+
+.persistence-notice button {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid rgba(254, 202, 202, 0.35);
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
 .app-shell {
   background:
     radial-gradient(circle at 75% -10%, rgba(88, 166, 255, 0.08), transparent 34%),
