@@ -1121,6 +1121,16 @@ button:disabled {
   white-space: nowrap;
 }
 
+.forward-warning {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid rgba(210, 153, 34, 0.45);
+  border-radius: 8px;
+  color: #e3b341;
+  background: rgba(210, 153, 34, 0.1);
+  font-size: 13px;
+}
+
 .sftp-transfer-status {
   margin: 0 0 10px;
   padding: 9px 12px;

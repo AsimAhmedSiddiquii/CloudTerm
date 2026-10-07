@@ -15,6 +15,8 @@ export default function PortForwardPanel({ sessionId, onClose }: Props) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const isLoopbackHost = ["localhost", "127.0.0.1", "::1"].includes(localHost.trim().toLowerCase());
+
   useEffect(() => () => {
     if (boundAddress) invoke("ssh_stop_local_forward", { sessionId }).catch(() => { });
   }, [boundAddress, sessionId]);
@@ -65,6 +67,11 @@ export default function PortForwardPanel({ sessionId, onClose }: Props) {
       <label>Remote host<input value={remoteHost} onChange={(event) => setRemoteHost(event.target.value)} disabled={Boolean(boundAddress)} /></label>
       <label>Remote port<input type="number" min="1" max="65535" value={remotePort} onChange={(event) => setRemotePort(Number(event.target.value))} disabled={Boolean(boundAddress)} /></label>
     </div>
+    {localHost.trim() && !isLoopbackHost && (
+      <div className="forward-warning" role="status">
+        This forwards on <code>{localHost.trim()}</code>, which may expose the tunnel to other devices on the network.
+      </div>
+    )}
     {error && <div className="form-error">{error}</div>}
     {boundAddress && <div className="forward-active">Forwarding active on <code>{boundAddress}</code> → <code>{remoteHost}:{remotePort}</code></div>}
     <div className="forward-actions">
