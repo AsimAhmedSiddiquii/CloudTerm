@@ -29,6 +29,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
   const [success, setSuccess] = useState("");
   const [transfer, setTransfer] = useState<"upload" | "download" | null>(null);
   const refreshGeneration = useRef(0);
+  const lifecycleGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
     const generation = ++refreshGeneration.current;
@@ -56,6 +57,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     refresh().catch(() => { });
     return () => {
       refreshGeneration.current += 1;
+      lifecycleGeneration.current += 1;
     };
   }, [refresh]);
 
@@ -68,6 +70,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     });
     if (!localPath) return;
 
+    const lifecycle = lifecycleGeneration.current;
     try {
       setTransfer("download");
       setError("");
@@ -77,11 +80,13 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
         remotePath: entry.path,
         localPath,
       });
+      if (lifecycle !== lifecycleGeneration.current) return;
       setSuccess(`Downloaded ${entry.name}.`);
     } catch (err) {
+      if (lifecycle !== lifecycleGeneration.current) return;
       setError(String(err));
     } finally {
-      setTransfer(null);
+      if (lifecycle === lifecycleGeneration.current) setTransfer(null);
     }
   }
 
@@ -97,6 +102,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
 
     const name = localPath.split(/[\\/]/).pop() ?? "upload";
     const remotePath = path === "." ? `./${name}` : `${path}/${name}`;
+    const lifecycle = lifecycleGeneration.current;
 
     try {
       setTransfer("upload");
@@ -108,11 +114,13 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
         remotePath,
       });
       await refresh();
+      if (lifecycle !== lifecycleGeneration.current) return;
       setSuccess(`Uploaded ${name}.`);
     } catch (err) {
+      if (lifecycle !== lifecycleGeneration.current) return;
       setError(String(err));
     } finally {
-      setTransfer(null);
+      if (lifecycle === lifecycleGeneration.current) setTransfer(null);
     }
   }
 
