@@ -41,16 +41,19 @@ pub async fn discover_instances(request: DiscoverRequest) -> Result<Vec<Ec2Insta
         .unwrap_or_else(|| "unknown".to_owned());
     let client = aws_sdk_ec2::Client::new(&config);
 
-    let response = client
+    let responses = client
         .describe_instances()
         .filters(Filter::builder().name("instance-state-name").values("pending").values("running").values("stopping").values("stopped").values("shutting-down").values("terminated").build())
+        .into_paginator()
         .send()
+        .collect::<Result<Vec<_>, _>>()
         .await?;
 
     let mut instances = Vec::new();
 
-    for reservation in response.reservations() {
-        for instance in reservation.instances() {
+    for response in responses {
+        for reservation in response.reservations() {
+            for instance in reservation.instances() {
             let id = instance.instance_id().unwrap_or("unknown").to_owned();
             let name = instance
                 .tags()
@@ -69,20 +72,21 @@ pub async fn discover_instances(request: DiscoverRequest) -> Result<Vec<Ec2Insta
                 .unwrap_or("unknown")
                 .to_owned();
 
-            instances.push(Ec2Instance {
-                id,
-                name,
-                state,
-                instance_type: instance
-                    .instance_type()
-                    .map(|value| value.as_str().to_owned())
-                    .unwrap_or_else(|| "unknown".to_owned()),
-                region: region.clone(),
-                availability_zone,
-                public_ip: instance.public_ip_address().map(str::to_owned),
-                private_ip: instance.private_ip_address().map(str::to_owned),
-                public_dns: instance.public_dns_name().map(str::to_owned),
-            });
+                instances.push(Ec2Instance {
+                    id,
+                    name,
+                    state,
+                    instance_type: instance
+                        .instance_type()
+                        .map(|value| value.as_str().to_owned())
+                        .unwrap_or_else(|| "unknown".to_owned()),
+                    region: region.clone(),
+                    availability_zone,
+                    public_ip: instance.public_ip_address().map(str::to_owned),
+                    private_ip: instance.private_ip_address().map(str::to_owned),
+                    public_dns: instance.public_dns_name().map(str::to_owned),
+                });
+            }
         }
     }
 
