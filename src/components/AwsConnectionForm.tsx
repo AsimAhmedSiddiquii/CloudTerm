@@ -174,10 +174,8 @@ export default function AwsConnectionForm({
             return null;
         }
 
-        if (!keyId) {
-            setError(
-                "Import an SSH key into the vault."
-            );
+        if (!keyId || !availableKeys.some((key) => key.id === keyId)) {
+            setError("Unlock the vault and select a valid SSH key.");
 
             return null;
         }
@@ -196,7 +194,12 @@ export default function AwsConnectionForm({
 
         let bastion: BastionConfig | undefined;
         if (useBastion) {
-            if (!bastionHost.trim() || !bastionUsername.trim() || !bastionKeyId) {
+            if (
+                !bastionHost.trim() ||
+                !bastionUsername.trim() ||
+                !bastionKeyId ||
+                !availableKeys.some((key) => key.id === bastionKeyId)
+            ) {
                 setError("Bastion host, username, and SSH key are required.");
                 return null;
             }
