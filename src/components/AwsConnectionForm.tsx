@@ -181,6 +181,7 @@ export default function AwsConnectionForm({
         }
 
         if (
+            !Number.isInteger(port) ||
             !Number.isFinite(port) ||
             port <= 0 ||
             port > 65535
@@ -213,7 +214,7 @@ export default function AwsConnectionForm({
                 setError("Bastion host, username, and SSH key are required.");
                 return null;
             }
-            if (!Number.isFinite(bastionPort) || bastionPort <= 0 || bastionPort > 65535) {
+            if (!Number.isInteger(bastionPort) || !Number.isFinite(bastionPort) || bastionPort <= 0 || bastionPort > 65535) {
                 setError("Enter a valid bastion port.");
                 return null;
             }
