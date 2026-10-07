@@ -1,6 +1,15 @@
 $ErrorActionPreference = "Stop"
 
 $workspacePath = Split-Path -Parent $PSScriptRoot
+$previousLocation = Get-Location
+try {
+    Set-Location -LiteralPath $workspacePath
+    npm run tauri build -- --no-bundle
+}
+finally {
+    Set-Location -LiteralPath $previousLocation
+}
+
 $releasePath = Join-Path $workspacePath "src-tauri\target\release"
 $binaryPath = Join-Path $releasePath "app.exe"
 $portablePath = Join-Path $releasePath "portable\CloudTerm"
