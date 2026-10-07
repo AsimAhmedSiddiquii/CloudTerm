@@ -123,6 +123,14 @@ function App() {
   const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
 
+  const keyUsageCounts = connections.reduce<Record<string, number>>((counts, connection) => {
+    counts[connection.keyId] = (counts[connection.keyId] ?? 0) + 1;
+    if (connection.bastion) {
+      counts[connection.bastion.keyId] = (counts[connection.bastion.keyId] ?? 0) + 1;
+    }
+    return counts;
+  }, {});
+
   const [splitMode, setSplitMode] =
     useState(false);
 
@@ -495,6 +503,7 @@ function App() {
               password={vaultPassword}
               onPasswordChange={handleVaultPasswordChange}
               onKeysChange={setVaultKeys}
+              keyUsageCounts={keyUsageCounts}
             />
           ) : activeConnection ? (
           <div className={`terminal-workspace ${splitMode ? "is-split" : ""}`}>

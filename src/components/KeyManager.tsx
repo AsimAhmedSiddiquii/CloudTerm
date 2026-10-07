@@ -10,12 +10,14 @@ interface Props {
   password: string;
   onPasswordChange: (password: string) => void;
   onKeysChange: (keys: ImportedKey[]) => void;
+  keyUsageCounts?: Readonly<Record<string, number>>;
 }
 
 export default function KeyManager({
   password,
   onPasswordChange,
   onKeysChange,
+  keyUsageCounts = {},
 }: Props) {
   const [keys, setKeys] = useState<ImportedKey[]>([]);
   const [error, setError] = useState("");
@@ -44,7 +46,11 @@ export default function KeyManager({
   }, [onKeysChange, password]);
 
   async function remove(key: ImportedKey) {
-    if (!window.confirm(`Delete "${key.name}" from the encrypted vault?`)) {
+    const usageCount = keyUsageCounts[key.id] ?? 0;
+    const usageWarning = usageCount > 0
+      ? ` It is referenced by ${usageCount} saved connection${usageCount === 1 ? "" : "s"}.`
+      : "";
+    if (!window.confirm(`Delete "${key.name}" from the encrypted vault?${usageWarning}`)) {
       return;
     }
 
