@@ -1,5 +1,7 @@
 # CloudTerm
 
+See [CHANGELOG.md](CHANGELOG.md) for the v0.1.0 release record and known distribution limitations.
+
 CloudTerm is a cross-platform desktop SSH connection manager built with **Tauri**, **React**, **TypeScript**, **Rust**, **russh**, and **xterm.js**.
 
 The current version is **0.1.0** and focuses on AWS EC2 and private infrastructure using SSH key authentication.
