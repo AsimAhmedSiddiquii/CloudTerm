@@ -179,7 +179,8 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-footer">
-        AWS
+        <span>AWS · SSH Manager</span>
+        <span className="app-version">v0.1.0</span>
       </div>
     </aside>
   );

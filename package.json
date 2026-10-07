@@ -1,7 +1,9 @@
 {
   "name": "cloudterm",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Cross-platform SSH connection manager for cloud and private infrastructure",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
