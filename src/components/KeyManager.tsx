@@ -23,11 +23,13 @@ export default function KeyManager({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!password) {
       setKeys([]);
       onKeysChange([]);
+      setUnlocked(false);
       return;
     }
 
@@ -37,9 +39,11 @@ export default function KeyManager({
       const next = await listKeys(password);
       setKeys(next);
       onKeysChange(next);
+      setUnlocked(true);
     } catch (err) {
       setKeys([]);
       onKeysChange([]);
+      setUnlocked(false);
       setError(String(err));
     } finally {
       setLoading(false);
@@ -67,12 +71,14 @@ export default function KeyManager({
   function handlePasswordChange(nextPassword: string) {
     setKeys([]);
     onKeysChange([]);
+    setUnlocked(false);
     onPasswordChange(nextPassword);
   }
 
   function lockVault() {
     setKeys([]);
     onKeysChange([]);
+    setUnlocked(false);
     onPasswordChange("");
     setError("");
   }
@@ -126,6 +132,11 @@ export default function KeyManager({
           </button>
         </div>
         <small>The password is kept in memory for this session only.</small>
+        {unlocked && !error && (
+          <div className="vault-status" role="status">
+            Vault unlocked{keys.length === 0 ? ". No imported keys yet." : ` · ${keys.length} key${keys.length === 1 ? "" : "s"} available.`}
+          </div>
+        )}
       </section>
 
       {error && <div className="form-error" role="alert">{error}</div>}

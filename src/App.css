@@ -1352,6 +1352,12 @@ button:disabled {
   font-size: 11px;
 }
 
+.vault-status {
+  margin-top: 10px;
+  color: #7ee787;
+  font-size: 12px;
+}
+
 .key-list-card {
   margin-top: 14px;
 }
