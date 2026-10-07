@@ -235,7 +235,7 @@ and install CloudTerm using the generated `.exe` or `.msi` installer.
 
 Unsigned development builds may trigger Microsoft SmartScreen warnings. Code signing should be configured before distributing CloudTerm publicly.
 
-For reproducible Windows installers, push a version tag such as `v0.1.0` or run the **Windows release** workflow manually in GitHub Actions. The workflow runs lint, frontend build, Rust tests, and produces MSI/NSIS artifacts.
+For reproducible release packages, push a version tag such as `v0.1.0`. GitHub Actions runs the platform build jobs, generates checksums, and publishes the MSI, NSIS, DMG, DEB, and AppImage packages to a GitHub Release. Running the workflow manually is useful for validation, but only version tags publish a release.
 
 Before packaging locally, run the fast release gate:
 

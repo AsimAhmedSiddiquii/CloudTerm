@@ -7,7 +7,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bundle-windows:
@@ -168,4 +168,34 @@ jobs:
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/SHA256SUMS-linux.txt
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - bundle-windows
+      - bundle-macos
+      - bundle-linux
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: CloudTerm-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t assets < <(find release-assets -type f -print)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets were downloaded." >&2
+            exit 1
+          fi
+          gh release create "${GITHUB_REF_NAME}" "${assets[@]}" \
+            --verify-tag \
+            --generate-notes \
+            --title "CloudTerm ${GITHUB_REF_NAME}"
 
