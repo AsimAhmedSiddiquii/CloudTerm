@@ -6,6 +6,8 @@ export interface ConnectionDraft {
   keyId: string;
   keyName: string;
   commandOnConnect: string;
+  connectTimeoutSeconds?: number;
+  keepAliveSeconds?: number;
   bastion?: BastionConfig;
 }
 

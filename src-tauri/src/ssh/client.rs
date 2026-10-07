@@ -165,6 +165,7 @@ async fn connect_session<R>(
     host: String,
     port: u16,
     stream: Option<R>,
+    timeout_seconds: u64,
 ) -> Result<client::Handle<Client>>
 where
     R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -183,12 +184,12 @@ where
         decision: Some(decision_rx),
     };
     let result = if let Some(stream) = stream {
-        tokio::time::timeout(Duration::from_secs(20), client::connect_stream(config, stream, handler))
+        tokio::time::timeout(Duration::from_secs(timeout_seconds), client::connect_stream(config, stream, handler))
             .await
             .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
             .with_context(|| format!("Unable to connect to {}:{} through bastion", host, port))
     } else {
-        tokio::time::timeout(Duration::from_secs(20), client::connect(config, (host.as_str(), port), handler))
+        tokio::time::timeout(Duration::from_secs(timeout_seconds), client::connect(config, (host.as_str(), port), handler))
             .await
             .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
             .with_context(|| format!("Unable to connect to {}:{}", host, port))
@@ -224,6 +225,8 @@ pub async fn connect_interactive(
     cols: u32,
     rows: u32,
     bastion: Option<BastionConnection>,
+    connect_timeout_seconds: Option<u64>,
+    keep_alive_seconds: Option<u64>,
 ) -> Result<()> {
     if session_id.trim().is_empty() {
         bail!("Session id is required");
@@ -236,8 +239,10 @@ pub async fn connect_interactive(
     }
 
     let key_pair = decode_key(&app, state, &session_id, &key_contents).await?;
+    let timeout_seconds = connect_timeout_seconds.unwrap_or(20).clamp(5, 300);
     let mut client_config = client::Config::default();
-    client_config.keepalive_interval = Some(Duration::from_secs(30));
+    let keep_alive = keep_alive_seconds.unwrap_or(30).clamp(5, 3600);
+    client_config.keepalive_interval = Some(Duration::from_secs(keep_alive));
     client_config.keepalive_max = 3;
     let config = Arc::new(client_config);
     let (session, upstream) = if let Some(bastion) = bastion {
@@ -247,7 +252,7 @@ pub async fn connect_interactive(
         let bastion_key = decode_key(&app, state, &session_id, &bastion.key_contents).await?;
         let mut bastion_session = connect_session(
             config.clone(), app.clone(), state, &session_id,
-            bastion.host.clone(), bastion.port, Option::<tokio::net::TcpStream>::None,
+            bastion.host.clone(), bastion.port, Option::<tokio::net::TcpStream>::None, timeout_seconds,
         ).await?;
         authenticate(&mut bastion_session, bastion.username, bastion_key).await?;
         let channel = bastion_session
@@ -255,14 +260,14 @@ pub async fn connect_interactive(
             .await
             .context("Unable to open a bastion tunnel to the target")?;
         let target_session = connect_session(
-            config, app.clone(), state, &session_id, host.clone(), port, Some(channel.into_stream()),
+            config, app.clone(), state, &session_id, host.clone(), port, Some(channel.into_stream()), timeout_seconds,
         ).await?;
         let mut target_session = target_session;
         authenticate(&mut target_session, username, key_pair).await?;
         (target_session, Some(bastion_session))
     } else {
         let mut session = connect_session::<tokio::net::TcpStream>(
-            config, app.clone(), state, &session_id, host.clone(), port, None,
+            config, app.clone(), state, &session_id, host.clone(), port, None, timeout_seconds,
         ).await?;
         authenticate(&mut session, username, key_pair).await?;
         (session, None)

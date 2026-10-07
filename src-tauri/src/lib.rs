@@ -33,6 +33,8 @@ struct SshConnectionRequest {
     cols: u32,
     rows: u32,
     bastion: Option<BastionRequest>,
+    connect_timeout_seconds: Option<u64>,
+    keep_alive_seconds: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,6 +69,8 @@ async fn connect_aws_ssh(
             username: bastion.username,
             key_contents: bastion.key_contents,
         }),
+        request.connect_timeout_seconds,
+        request.keep_alive_seconds,
     )
     .await
     .map_err(|error| error.to_string())

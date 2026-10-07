@@ -56,6 +56,13 @@ export default function AwsConnectionForm({
         initialConnection?.commandOnConnect ?? prefill?.commandOnConnect ?? ""
     );
 
+    const [connectTimeoutSeconds, setConnectTimeoutSeconds] = useState(
+        initialConnection?.connectTimeoutSeconds ?? prefill?.connectTimeoutSeconds ?? 20
+    );
+    const [keepAliveSeconds, setKeepAliveSeconds] = useState(
+        initialConnection?.keepAliveSeconds ?? prefill?.keepAliveSeconds ?? 30
+    );
+
     const [username, setUsername] = useState(
         initialConnection?.username ?? prefill?.username ?? "ubuntu"
     );
@@ -202,6 +209,8 @@ export default function AwsConnectionForm({
             keyId,
             keyName,
             commandOnConnect: commandOnConnect.trim(),
+            connectTimeoutSeconds,
+            keepAliveSeconds,
             bastion,
         };
     }
@@ -421,6 +430,17 @@ export default function AwsConnectionForm({
                         onChange={(event) => setCommandOnConnect(event.target.value)}
                         placeholder="e.g. cd /var/www/app"
                     />
+
+                    <div className="form-row advanced-settings-row">
+                        <div>
+                            <label>Connection timeout (seconds)</label>
+                            <input type="number" min="5" max="300" value={connectTimeoutSeconds} onChange={(event) => setConnectTimeoutSeconds(Number(event.target.value))} />
+                        </div>
+                        <div>
+                            <label>Keep-alive interval (seconds)</label>
+                            <input type="number" min="5" max="3600" value={keepAliveSeconds} onChange={(event) => setKeepAliveSeconds(Number(event.target.value))} />
+                        </div>
+                    </div>
 
                     <label className="checkbox-label">
                         <input type="checkbox" checked={useBastion} onChange={(event) => setUseBastion(event.target.checked)} />

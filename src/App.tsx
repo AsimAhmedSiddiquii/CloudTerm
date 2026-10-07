@@ -459,6 +459,8 @@ function App() {
               vaultPassword={vaultPassword}
               commandOnConnect={activeConnection.commandOnConnect}
               bastion={activeConnection.bastion}
+              connectTimeoutSeconds={activeConnection.connectTimeoutSeconds}
+              keepAliveSeconds={activeConnection.keepAliveSeconds}
               status={connectionStatus}
               onHostKeyPrompt={setHostKeyPrompt}
               onKeyPassphrasePrompt={(prompt) => {
@@ -495,6 +497,8 @@ function App() {
                 vaultPassword={vaultPassword}
                 commandOnConnect={connection.commandOnConnect}
                 bastion={connection.bastion}
+                connectTimeoutSeconds={connection.connectTimeoutSeconds}
+                keepAliveSeconds={connection.keepAliveSeconds}
                 status={splitStatuses[connection.id] ?? "connecting"}
                 onHostKeyPrompt={setHostKeyPrompt}
                 onKeyPassphrasePrompt={(prompt) => {

@@ -33,6 +33,8 @@ interface Props {
   vaultPassword: string;
   commandOnConnect: string;
   bastion?: BastionConfig;
+  connectTimeoutSeconds?: number;
+  keepAliveSeconds?: number;
 
   onBack: () => void;
 
@@ -69,6 +71,8 @@ export default function TerminalView({
   vaultPassword,
   commandOnConnect,
   bastion,
+  connectTimeoutSeconds,
+  keepAliveSeconds,
   onBack,
   onConnected,
   onDisconnected,
@@ -218,6 +222,8 @@ export default function TerminalView({
                 username: bastion.username,
                 keyContents: bastionKeyContents,
               } : null,
+              connectTimeoutSeconds,
+              keepAliveSeconds,
             },
           }
         );
@@ -305,6 +311,8 @@ export default function TerminalView({
     vaultPassword,
     commandOnConnect,
     bastion,
+    connectTimeoutSeconds,
+    keepAliveSeconds,
     onHostKeyPrompt,
     onKeyPassphrasePrompt,
     retryCount,
