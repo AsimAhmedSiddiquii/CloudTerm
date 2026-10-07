@@ -6,6 +6,13 @@ import type {
 
 const STORE_FILE = "connections.json";
 const CONNECTIONS_KEY = "connections";
+let writeQueue: Promise<void> = Promise.resolve();
+
+function enqueueWrite<T>(task: () => Promise<T>): Promise<T> {
+  const next = writeQueue.then(task);
+  writeQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
@@ -81,50 +88,54 @@ export async function saveConnections(
   }
 
   const normalized = normalizedConnections as SavedConnection[];
-  const store = await getStore();
+  return enqueueWrite(async () => {
+    const store = await getStore();
 
-  const connections =
-    (await store.get<SavedConnection[]>(
-      CONNECTIONS_KEY
-    )) ?? [];
+    const connections =
+      (await store.get<SavedConnection[]>(
+        CONNECTIONS_KEY
+      )) ?? [];
 
-  for (const connection of normalized) {
-    const existingIndex = connections.findIndex((item) => item.id === connection.id);
+    for (const connection of normalized) {
+      const existingIndex = connections.findIndex((item) => item.id === connection.id);
 
-    if (existingIndex >= 0) {
-      connections[existingIndex] = connection;
-    } else {
-      connections.push(connection);
+      if (existingIndex >= 0) {
+        connections[existingIndex] = connection;
+      } else {
+        connections.push(connection);
+      }
     }
-  }
 
-  await store.set(
-    CONNECTIONS_KEY,
-    connections
-  );
+    await store.set(
+      CONNECTIONS_KEY,
+      connections
+    );
 
-  await store.save();
+    await store.save();
+  });
 }
 
 export async function deleteConnection(
   id: string
 ) {
-  const store = await getStore();
+  return enqueueWrite(async () => {
+    const store = await getStore();
 
-  const connections =
-    (await store.get<SavedConnection[]>(
-      CONNECTIONS_KEY
-    )) ?? [];
+    const connections =
+      (await store.get<SavedConnection[]>(
+        CONNECTIONS_KEY
+      )) ?? [];
 
-  const updated =
-    connections.filter(
-      (item) => item.id !== id
+    const updated =
+      connections.filter(
+        (item) => item.id !== id
+      );
+
+    await store.set(
+      CONNECTIONS_KEY,
+      updated
     );
 
-  await store.set(
-    CONNECTIONS_KEY,
-    updated
-  );
-
-  await store.save();
+    await store.save();
+  });
 }
