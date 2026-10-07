@@ -17,6 +17,7 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
   async function discover() {
     setLoading(true);
     setError("");
+    setInstances([]);
     try { setInstances(await discoverInstances(profile, region)); }
     catch (err) { setError(`Unable to discover EC2 instances: ${String(err)}`); }
     finally { setLoading(false); }
@@ -30,8 +31,8 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
           <button className="icon-button" type="button" onClick={onClose} aria-label="Close discovery">×</button>
         </div>
         <div className="discovery-controls">
-          <label>AWS profile <span className="optional-label">Optional</span><input value={profile} onChange={(event) => setProfile(event.target.value)} placeholder="default" /></label>
-          <label>Region <span className="optional-label">Optional</span><input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="us-east-1" /></label>
+          <label>AWS profile <span className="optional-label">Optional</span><input value={profile} onChange={(event) => setProfile(event.target.value)} placeholder="default" disabled={loading} /></label>
+          <label>Region <span className="optional-label">Optional</span><input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="us-east-1" disabled={loading} /></label>
           <button className="primary-button discovery-button" type="button" onClick={discover} disabled={loading}>{loading ? "Discovering…" : "Discover"}</button>
         </div>
         {error && <div className="form-error">{error}</div>}
