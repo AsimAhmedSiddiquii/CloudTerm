@@ -25,7 +25,9 @@ if (Test-Path -LiteralPath $portablePath) {
 }
 New-Item -ItemType Directory -Path $portablePath -Force | Out-Null
 Copy-Item -LiteralPath $binaryPath -Destination (Join-Path $portablePath "CloudTerm.exe")
-Copy-Item -LiteralPath (Join-Path $workspacePath "README.md") -Destination (Join-Path $portablePath "README.md")
+foreach ($document in @("README.md", "LICENSE", "SECURITY.md")) {
+    Copy-Item -LiteralPath (Join-Path $workspacePath $document) -Destination (Join-Path $portablePath $document)
+}
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
