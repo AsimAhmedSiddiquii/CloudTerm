@@ -251,7 +251,14 @@ To create a portable Windows package locally, run:
 npm run package:portable
 ```
 
-The ZIP is written to `src-tauri\target\release\CloudTerm-portable-windows.zip` and contains `CloudTerm.exe` plus this README. It is portable rather than an installed MSI/NSIS package.
+The ZIP is written to `src-tauri\target\release\CloudTerm-portable-windows.zip` and contains `CloudTerm.exe` plus this README. A matching `CloudTerm-portable-windows.zip.sha256` file is generated beside it so the download can be verified before opening it. It is portable rather than an installed MSI/NSIS package.
+
+To verify the portable package in PowerShell:
+
+```powershell
+Get-FileHash .\src-tauri\target\release\CloudTerm-portable-windows.zip -Algorithm SHA256
+Get-Content .\src-tauri\target\release\CloudTerm-portable-windows.zip.sha256
+```
 
 ## Security Notes
 
