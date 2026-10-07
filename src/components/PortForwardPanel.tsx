@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface Props {
   sessionId: string;
@@ -20,6 +21,26 @@ export default function PortForwardPanel({ sessionId, onClose }: Props) {
   useEffect(() => () => {
     if (boundAddress) invoke("ssh_stop_local_forward", { sessionId }).catch(() => { });
   }, [boundAddress, sessionId]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    listen(`ssh-closed:${sessionId}`, () => {
+      if (disposed) return;
+      setBoundAddress("");
+      setLoading(false);
+      setError("SSH session closed; forwarding was stopped.");
+    }).then((cleanup) => {
+      if (disposed) cleanup();
+      else unlisten = cleanup;
+    }).catch(() => { });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [sessionId]);
 
   async function start() {
     if (!localHost.trim()) {
