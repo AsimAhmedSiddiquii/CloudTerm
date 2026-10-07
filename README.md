@@ -307,6 +307,7 @@ Completed for v0.1:
 
 - Encrypted private-key storage and host-key verification
 - Application icons and semantic versioning
+- Content Security Policy for the production webview
 - Windows release workflow and portable package generation
 
 Remaining before a broad public distribution:
