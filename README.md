@@ -202,7 +202,7 @@ In `src-tauri/tauri.conf.json`, configure the application metadata before releas
 {
   "productName": "CloudTerm",
   "version": "0.1.0",
-  "identifier": "com.entwicklera.cloudterm",
+  "identifier": "com.devasimsiddiqui.dev",
   "bundle": {
     "active": true,
     "targets": "all",

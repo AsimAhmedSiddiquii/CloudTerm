@@ -16,7 +16,7 @@
 - Local SSH port forwarding with automatic cleanup on disconnect.
 - Per-connection timeout and keep-alive settings.
 - Metadata-only connection backup and restore.
-- Portable Windows ZIP packaging and a read-only Windows release workflow.
+- Portable Windows ZIP packaging and a cross-platform read-only release workflow.
 
 ### Release notes
 
