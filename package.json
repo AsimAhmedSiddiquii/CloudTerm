@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "release:check": "npm run lint && npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "release:check": "npm run release:version && npm run lint && npm run build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "release:version": "node scripts/check-version.mjs",
     "package:portable": "powershell -ExecutionPolicy Bypass -File scripts/package-portable.ps1",
     "preview": "vite preview",
     "tauri": "tauri"

@@ -243,7 +243,7 @@ Before packaging locally, run the fast release gate:
 npm run release:check
 ```
 
-This runs lint, the frontend production build, and the native Rust compile. The GitHub release workflow additionally runs the Rust test suite before creating installers.
+This checks version consistency, runs lint, builds the frontend, and compiles the native Rust application. The GitHub release workflow additionally runs the Rust test suite before creating installers.
 
 To create a portable Windows package locally, run:
 

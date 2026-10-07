@@ -33,6 +33,7 @@ jobs:
 
       - name: Build and verify
         run: |
+          npm run release:version -- --tag "${{ github.ref_name }}"
           npm run lint
           npm run build
           cargo test --manifest-path src-tauri/Cargo.toml
