@@ -401,7 +401,7 @@ export default function TerminalView({
           <button onClick={onForwardOpen} className="split-button" type="button">Forward</button>
         )}
 
-        {status === "failed" && (
+        {(status === "failed" || status === "disconnected") && (
           <button
             onClick={() => {
               onRetry?.();
