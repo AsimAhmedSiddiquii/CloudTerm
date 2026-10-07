@@ -195,6 +195,31 @@ jobs:
           path: release-assets
           merge-multiple: true
 
+      - name: Create release manifest
+        shell: bash
+        run: |
+          python - <<'PY'
+          import datetime
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("release-assets")
+          assets = sorted(path.name for path in root.rglob("*") if path.is_file())
+          manifest = {
+              "product": "CloudTerm",
+              "version": os.environ["GITHUB_REF_NAME"].removeprefix("v"),
+              "tag": os.environ["GITHUB_REF_NAME"],
+              "commit": os.environ["GITHUB_SHA"],
+              "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "assets": assets,
+          }
+          Path("release-assets/RELEASE-MANIFEST.json").write_text(
+              json.dumps(manifest, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
