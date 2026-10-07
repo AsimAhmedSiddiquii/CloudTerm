@@ -60,7 +60,17 @@ fn save_vault(path: &PathBuf, vault: &VaultFile) -> Result<()> {
     }
 
     let bytes = serde_json::to_vec_pretty(vault)?;
-    fs::write(path, bytes).context("Unable to save the encrypted key vault")?;
+    let temporary_path = path.with_extension("vault.tmp");
+    fs::write(&temporary_path, &bytes).context("Unable to write the encrypted key vault")?;
+
+    if let Err(replace_error) = fs::rename(&temporary_path, path) {
+        if path.exists() {
+            fs::remove_file(path).context("Unable to replace the encrypted key vault")?;
+            fs::rename(&temporary_path, path).context("Unable to finalize the encrypted key vault")?;
+        } else {
+            return Err(replace_error).context("Unable to finalize the encrypted key vault");
+        }
+    }
     Ok(())
 }
 
