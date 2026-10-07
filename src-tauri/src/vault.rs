@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
-use aes_gcm::{aead::{Aead, KeyInit}, Aes256Gcm, Nonce};
+use aes_gcm::{
+    Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit},
+};
 use anyhow::{Context, Result};
 use argon2::Argon2;
 use rand::RngExt;
@@ -61,16 +65,40 @@ fn save_vault(path: &PathBuf, vault: &VaultFile) -> Result<()> {
 
     let bytes = serde_json::to_vec_pretty(vault)?;
     let temporary_path = path.with_extension("vault.tmp");
-    fs::write(&temporary_path, &bytes).context("Unable to write the encrypted key vault")?;
+    let write_result = (|| -> Result<()> {
+        let mut temporary_file = fs::File::create(&temporary_path)
+            .context("Unable to create the encrypted key vault temporary file")?;
+        temporary_file
+            .write_all(&bytes)
+            .context("Unable to write the encrypted key vault")?;
+        temporary_file
+            .sync_all()
+            .context("Unable to flush the encrypted key vault")?;
+        Ok(())
+    })();
+    if let Err(error) = write_result {
+        let _ = fs::remove_file(&temporary_path);
+        return Err(error);
+    }
 
     if let Err(replace_error) = fs::rename(&temporary_path, path) {
         if path.exists() {
             fs::remove_file(path).context("Unable to replace the encrypted key vault")?;
-            fs::rename(&temporary_path, path).context("Unable to finalize the encrypted key vault")?;
+            fs::rename(&temporary_path, path)
+                .context("Unable to finalize the encrypted key vault")?;
         } else {
+            let _ = fs::remove_file(&temporary_path);
             return Err(replace_error).context("Unable to finalize the encrypted key vault");
         }
     }
+
+    #[cfg(unix)]
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)
+            .and_then(|directory| directory.sync_all())
+            .context("Unable to flush the encrypted key vault directory")?;
+    }
+
     Ok(())
 }
 
@@ -97,8 +125,8 @@ pub async fn import_key(
     if password.trim().is_empty() {
         anyhow::bail!("Vault password is required");
     }
-    let source = fs::read_to_string(&path)
-        .with_context(|| format!("Unable to read SSH key: {path}"))?;
+    let source =
+        fs::read_to_string(&path).with_context(|| format!("Unable to read SSH key: {path}"))?;
     let file_path = vault_path(&app)?;
     let mut vault = load_vault(&file_path)?;
 
@@ -141,10 +169,13 @@ pub async fn import_key(
     };
     let mut stored = nonce_bytes.to_vec();
     stored.extend(ciphertext);
-    vault.entries.insert(id.clone(), VaultEntry {
-        name: key_name.clone(),
-        ciphertext: stored,
-    });
+    vault.entries.insert(
+        id.clone(),
+        VaultEntry {
+            name: key_name.clone(),
+            ciphertext: stored,
+        },
+    );
     save_vault(&file_path, &vault)?;
 
     Ok(VaultKey { id, name: key_name })
@@ -161,7 +192,10 @@ pub async fn read_key(
         anyhow::bail!("Vault password is required");
     }
     let vault = load_vault(&vault_path(&app)?)?;
-    let entry = vault.entries.get(&id).context("SSH key was not found in the vault")?;
+    let entry = vault
+        .entries
+        .get(&id)
+        .context("SSH key was not found in the vault")?;
     let key = encryption_key(&password, &vault.salt)?;
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
@@ -209,7 +243,10 @@ pub async fn list_keys(
     Ok(vault
         .entries
         .into_iter()
-        .map(|(id, entry)| VaultKey { id, name: entry.name })
+        .map(|(id, entry)| VaultKey {
+            id,
+            name: entry.name,
+        })
         .collect())
 }
 
