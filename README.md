@@ -235,6 +235,15 @@ Unsigned development builds may trigger Microsoft SmartScreen warnings. Code sig
 
 For reproducible Windows installers, push a version tag such as `v0.1.0` or run the **Windows release** workflow manually in GitHub Actions. The workflow runs lint, frontend build, Rust tests, and produces MSI/NSIS artifacts.
 
+To create a portable Windows package locally, build the standalone executable and run:
+
+```powershell
+npm run tauri build -- --no-bundle
+npm run package:portable
+```
+
+The ZIP is written to `src-tauri\target\release\CloudTerm-portable-windows.zip` and contains `CloudTerm.exe` plus this README. It is portable rather than an installed MSI/NSIS package.
+
 ## Security Notes
 
 CloudTerm currently stores saved connection metadata locally.
