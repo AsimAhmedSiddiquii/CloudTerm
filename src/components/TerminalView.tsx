@@ -94,6 +94,7 @@ export default function TerminalView({
         ? "Connection failed"
         : "Disconnected";
   const [retryCount, setRetryCount] = useState(0);
+  const [connectionError, setConnectionError] = useState("");
   const terminalContainer =
     useRef<HTMLDivElement>(null);
   const lifecycleCallbacks = useRef({
@@ -203,6 +204,9 @@ export default function TerminalView({
       );
 
       try {
+        if (!disposed) {
+          setConnectionError("");
+        }
         const keyContents = await readKey(
           vaultPassword,
           keyId
@@ -238,6 +242,9 @@ export default function TerminalView({
         lifecycleCallbacks.current.onConnected?.();
       } catch (error) {
         lifecycleCallbacks.current.onFailed?.();
+        if (!disposed) {
+          setConnectionError(String(error));
+        }
 
         terminal.write(
           `\r\n\x1b[31mConnection failed: ${String(
@@ -382,6 +389,13 @@ export default function TerminalView({
           Disconnect
         </button>
       </div>
+
+      {connectionError && (
+        <div className="terminal-error" role="alert">
+          <strong>Connection failed</strong>
+          <span>{connectionError}</span>
+        </div>
+      )}
 
       <div
         ref={terminalContainer}
