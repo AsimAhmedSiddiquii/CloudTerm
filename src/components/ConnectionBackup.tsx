@@ -6,7 +6,7 @@ import { parseConnections, serializeConnections } from "../services/connectionBa
 
 interface Props {
   connections: SavedConnection[];
-  onImport: (connections: SavedConnection[]) => Promise<void>;
+  onImport: (connections: SavedConnection[]) => Promise<number>;
   onClose: () => void;
 }
 
@@ -35,8 +35,10 @@ export default function ConnectionBackup({ connections, onImport, onClose }: Pro
       setLoading(true);
       const imported = parseConnections(await invoke<string>("read_connection_backup", { path }));
       if (!imported.length) throw new Error("The backup contains no valid connections.");
-      await onImport(imported);
-      setMessage(`Imported ${imported.length} connection${imported.length === 1 ? "" : "s"}. Private keys are never included; reselect a vault key if needed.`);
+      const importedCount = await onImport(imported);
+      setMessage(importedCount
+        ? `Imported ${importedCount} new connection${importedCount === 1 ? "" : "s"}. Private keys are never included; reselect a vault key if needed.`
+        : "All connections in this backup are already present.");
     } catch (err) { setError(String(err)); }
     finally { setLoading(false); }
   }

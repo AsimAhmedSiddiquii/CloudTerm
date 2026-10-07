@@ -408,10 +408,33 @@ function App() {
     setShowBackup(true);
   }
 
-  async function importConnections(imported: BackupConnection[]) {
+  function connectionFingerprint(connection: BackupConnection) {
+    const bastion = connection.bastion;
+    return [
+      connection.host.trim().toLowerCase(),
+      connection.port,
+      connection.username.trim().toLowerCase(),
+      connection.keyId,
+      bastion?.host.trim().toLowerCase() ?? "",
+      bastion?.port ?? "",
+      bastion?.username.trim().toLowerCase() ?? "",
+      bastion?.keyId ?? "",
+    ].join("\u001f");
+  }
+
+  async function importConnections(imported: BackupConnection[]): Promise<number> {
     try {
-      await saveConnections(imported);
+      const fingerprints = new Set(connections.map(connectionFingerprint));
+      const unique = imported.filter((connection) => {
+        const fingerprint = connectionFingerprint(connection);
+        if (fingerprints.has(fingerprint)) return false;
+        fingerprints.add(fingerprint);
+        return true;
+      });
+      if (!unique.length) return 0;
+      await saveConnections(unique);
       await refreshConnections();
+      return unique.length;
     } catch (error) {
       setStorageError(errorMessage(error, "Unable to import the selected connections."));
       throw error;
