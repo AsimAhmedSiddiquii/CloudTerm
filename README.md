@@ -322,6 +322,8 @@ Remaining before a broad public distribution:
 
 The repository includes a cross-platform release workflow that automates Windows, macOS, and Linux builds plus checksum manifests. Code signing and update signing still need to be configured before public distribution.
 
+See [RELEASE_SIGNING.md](RELEASE_SIGNING.md) for the signing key, certificate, updater, and final release-validation checklist.
+
 ## License
 
 MIT License
