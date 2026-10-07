@@ -461,6 +461,7 @@ export default function AwsConnectionForm({
                             type="button"
                             className="secondary-button"
                             onClick={importPem}
+                            disabled={importingKey || !vaultPassword.trim()}
                         >
                             {importingKey ? "Importing…" : "Import key"}
                         </button>
