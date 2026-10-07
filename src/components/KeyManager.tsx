@@ -10,6 +10,7 @@ interface Props {
   password: string;
   onPasswordChange: (password: string) => void;
   onKeysChange: (keys: ImportedKey[]) => void;
+  onUnlockChange: (unlocked: boolean) => void;
   keyUsageCounts?: ReadonlyMap<string, number>;
 }
 
@@ -17,6 +18,7 @@ export default function KeyManager({
   password,
   onPasswordChange,
   onKeysChange,
+  onUnlockChange,
   keyUsageCounts = new Map(),
 }: Props) {
   const [keys, setKeys] = useState<ImportedKey[]>([]);
@@ -29,6 +31,7 @@ export default function KeyManager({
     if (!password) {
       setKeys([]);
       onKeysChange([]);
+      onUnlockChange(false);
       setUnlocked(false);
       return;
     }
@@ -39,16 +42,18 @@ export default function KeyManager({
       const next = await listKeys(password);
       setKeys(next);
       onKeysChange(next);
+      onUnlockChange(true);
       setUnlocked(true);
     } catch (err) {
       setKeys([]);
       onKeysChange([]);
+      onUnlockChange(false);
       setUnlocked(false);
       setError(String(err));
     } finally {
       setLoading(false);
     }
-  }, [onKeysChange, password]);
+  }, [onKeysChange, onUnlockChange, password]);
 
   async function remove(key: ImportedKey) {
     const usageCount = keyUsageCounts?.get(key.id) ?? 0;
@@ -71,6 +76,7 @@ export default function KeyManager({
   function handlePasswordChange(nextPassword: string) {
     setKeys([]);
     onKeysChange([]);
+    onUnlockChange(false);
     setUnlocked(false);
     onPasswordChange(nextPassword);
   }
@@ -78,6 +84,7 @@ export default function KeyManager({
   function lockVault() {
     setKeys([]);
     onKeysChange([]);
+    onUnlockChange(false);
     setUnlocked(false);
     onPasswordChange("");
     setError("");

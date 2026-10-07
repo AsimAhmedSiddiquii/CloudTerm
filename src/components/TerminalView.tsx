@@ -426,7 +426,11 @@ export default function TerminalView({
             className="disconnect-button"
             type="button"
           >
-            <span className="terminal-action-icon" aria-hidden="true">⏻</span>
+            <span className="terminal-action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v9M7.1 5.8a8 8 0 1 0 9.8 0" />
+              </svg>
+            </span>
             Disconnect
           </button>
         </div>

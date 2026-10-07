@@ -18,13 +18,14 @@ interface Props {
     prefill?: Partial<ConnectionDraft> | null;
 
     onConnect: (
-        connection: ConnectionDraft
+        connection: ConnectionDraft,
+        savedId?: string
     ) => void;
 
     onSave: (
         connection: ConnectionDraft,
         existingId?: string
-    ) => Promise<void>;
+    ) => Promise<SavedConnection>;
 
     onVaultPasswordChange: (password: string) => void;
     onVaultUnlock: (password: string) => Promise<void>;
@@ -262,7 +263,7 @@ export default function AwsConnectionForm({
             return;
         }
 
-        onConnect(draft);
+        onConnect(draft, initialConnection?.id);
     }
 
     async function save() {
@@ -302,12 +303,12 @@ export default function AwsConnectionForm({
         }
 
         try {
-            await onSave(
+            const savedConnection = await onSave(
                 draft,
                 initialConnection?.id
             );
 
-            onConnect(draft);
+            onConnect(draft, savedConnection.id);
         } catch (err) {
             setError(
                 `Could not save connection: ${String(

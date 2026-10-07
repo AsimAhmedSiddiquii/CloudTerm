@@ -805,6 +805,16 @@ button:disabled {
   line-height: 1;
 }
 
+.terminal-action-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .split-button:hover {
   border-color: #58a6ff;
   color: #79c0ff;

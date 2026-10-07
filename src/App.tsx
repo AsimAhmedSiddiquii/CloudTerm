@@ -50,10 +50,24 @@ import type {
 } from "./types/connection";
 
 function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message.trim()
-    ? error.message
-    : fallback;
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+  return fallback;
 }
+
+type PendingVaultConnection = {
+  connection: SavedConnection;
+  mode: "primary" | "split";
+};
 
 function App() {
   const [
@@ -114,9 +128,15 @@ function App() {
 
   const [vaultPassword, setVaultPassword] =
     useState("");
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
 
   const [vaultKeys, setVaultKeys] =
     useState<ImportedKey[]>([]);
+  const [pendingVaultConnection, setPendingVaultConnection] =
+    useState<PendingVaultConnection | null>(null);
+  const [vaultUnlockPassword, setVaultUnlockPassword] = useState("");
+  const [vaultUnlockError, setVaultUnlockError] = useState("");
+  const [vaultUnlockLoading, setVaultUnlockLoading] = useState(false);
 
   const [showKeys, setShowKeys] =
     useState(false);
@@ -249,6 +269,7 @@ function App() {
       await saveConnection(connection);
       await refreshConnections();
       setEditingConnection(null);
+      return connection;
     } catch (error) {
       const message = errorMessage(error, "Unable to save this connection.");
       setStorageError(message);
@@ -257,12 +278,13 @@ function App() {
   }
 
   function handleConnect(
-    draft: ConnectionDraft
+    draft: ConnectionDraft,
+    savedId?: string
   ) {
     setActiveConnection({
       ...draft,
 
-      id: editingConnection?.id ?? `temporary-${Date.now()}`,
+      id: savedId ?? editingConnection?.id ?? `temporary-${Date.now()}`,
 
       provider: "aws",
 
@@ -282,16 +304,19 @@ function App() {
     connection: SavedConnection
   ) {
     if (splitMode && activeConnection) {
-      if (
-        connection.id !== activeConnection.id &&
-        !splitConnections.some((item) => item.id === connection.id)
-      ) {
-        setSplitConnections((current) =>
-          [...current, connection].slice(0, 3)
-        );
-      }
+      openInSplit(connection);
       return;
     }
+
+    if (connectionUsesVault(connection) && !vaultUnlocked) {
+      requestVaultUnlock(connection, "primary");
+      return;
+    }
+
+    activatePrimaryConnection(connection);
+  }
+
+  function activatePrimaryConnection(connection: SavedConnection) {
 
     setEditingConnection(null);
     setShowKeys(false);
@@ -397,19 +422,24 @@ function App() {
     }
 
     try {
-      setVaultKeys(await listKeys(password));
-    } catch {
+      const keys = await listKeys(password);
+      setVaultKeys(keys);
+      return keys;
+    } catch (error) {
       setVaultKeys([]);
+      throw error;
     }
   }
 
   function handleVaultPasswordChange(password: string) {
     setVaultPassword(password);
     setVaultKeys([]);
+    setVaultUnlocked(false);
   }
 
   async function unlockVault(password: string) {
     await refreshVaultKeys(password);
+    setVaultUnlocked(true);
   }
 
   async function createVaultPassword() {
@@ -425,8 +455,10 @@ function App() {
     try {
       setVaultSetupLoading(true);
       setVaultSetupError("");
-      await listKeys(vaultSetupPassword);
+      const keys = await listKeys(vaultSetupPassword);
       setVaultPassword(vaultSetupPassword);
+      setVaultKeys(keys);
+      setVaultUnlocked(true);
       setVaultSetupPassword("");
       setVaultSetupConfirmation("");
       setShowVaultSetup(false);
@@ -584,9 +616,62 @@ function App() {
       return;
     }
 
+    if (connectionUsesVault(connection) && !vaultUnlocked) {
+      requestVaultUnlock(connection, "split");
+      return;
+    }
+
+    addSplitConnection(connection);
+  }
+
+  function addSplitConnection(connection: SavedConnection) {
+    if (!activeConnection || splitConnections.length >= 3) {
+      return;
+    }
+
     setSplitConnections((current) => [...current, connection].slice(0, 3));
     setSplitMode(true);
     setShowSplitPicker(false);
+  }
+
+  function connectionUsesVault(connection: SavedConnection) {
+    return Boolean(connection.keyId || connection.bastion?.keyId);
+  }
+
+  function requestVaultUnlock(connection: SavedConnection, mode: PendingVaultConnection["mode"]) {
+    setPendingVaultConnection({ connection, mode });
+    setVaultUnlockPassword("");
+    setVaultUnlockError("");
+    setShowSplitPicker(false);
+  }
+
+  async function unlockPendingConnection() {
+    if (!pendingVaultConnection || !vaultUnlockPassword.trim()) {
+      setVaultUnlockError("Enter your vault password.");
+      return;
+    }
+
+    try {
+      setVaultUnlockLoading(true);
+      setVaultUnlockError("");
+      const keys = await listKeys(vaultUnlockPassword);
+      const pending = pendingVaultConnection;
+      setVaultPassword(vaultUnlockPassword);
+      setVaultKeys(keys);
+      setVaultUnlocked(true);
+      setPendingVaultConnection(null);
+      setVaultUnlockPassword("");
+
+      if (pending.mode === "split") {
+        addSplitConnection(pending.connection);
+      } else {
+        activatePrimaryConnection(pending.connection);
+      }
+    } catch (error) {
+      setVaultUnlockError(errorMessage(error, "Unable to unlock the encrypted vault."));
+    } finally {
+      setVaultUnlockLoading(false);
+    }
   }
 
   function setSplitStatus(
@@ -644,6 +729,7 @@ function App() {
               password={vaultPassword}
               onPasswordChange={handleVaultPasswordChange}
               onKeysChange={setVaultKeys}
+              onUnlockChange={setVaultUnlocked}
               keyUsageCounts={keyUsageCounts}
             />
           ) : activeConnection ? (
@@ -749,6 +835,7 @@ function App() {
             availableKeys={vaultKeys}
             onKeyImported={(key) => {
               setVaultKeys((current) => [...current, key]);
+              setVaultUnlocked(true);
             }}
           />
         ) : (
@@ -773,7 +860,52 @@ function App() {
         </Suspense>
       </main>
 
-      {showSplitPicker && activeConnection && (
+      {pendingVaultConnection && (
+        <div className="modal-backdrop">
+          <section className="trust-dialog passphrase-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-unlock-title">
+            <div className="trust-dialog-icon key-icon">⌑</div>
+            <p className="eyebrow">ENCRYPTED SSH KEY</p>
+            <h2 id="vault-unlock-title">Unlock vault to connect</h2>
+            <p>
+              Enter your vault password to use the key saved for {pendingVaultConnection.connection.name}. The password will be remembered only for this app session.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              value={vaultUnlockPassword}
+              onChange={(event) => setVaultUnlockPassword(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void unlockPendingConnection();
+              }}
+              placeholder="Vault password"
+            />
+            {vaultUnlockError && <div className="form-error" role="alert">{vaultUnlockError}</div>}
+            <div className="trust-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setPendingVaultConnection(null);
+                  setVaultUnlockPassword("");
+                  setVaultUnlockError("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void unlockPendingConnection()}
+                disabled={vaultUnlockLoading || !vaultUnlockPassword.trim()}
+              >
+                {vaultUnlockLoading ? "Unlocking…" : "Unlock & connect"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showSplitPicker && activeConnection && !pendingVaultConnection && (
         <div className="modal-backdrop">
           <section className="trust-dialog split-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="split-picker-title">
             <p className="eyebrow">SPLIT VIEW</p>
