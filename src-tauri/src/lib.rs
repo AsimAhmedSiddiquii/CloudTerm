@@ -5,6 +5,7 @@ mod ssh_config;
 
 use serde::Deserialize;
 use std::fs;
+use std::io::Write;
 use std::path::PathBuf;
 
 use ssh::client::SshState;
@@ -23,8 +24,21 @@ fn write_connection_backup(path: String, contents: String) -> Result<(), String>
     let path = PathBuf::from(path);
     let temporary_path = path.with_extension("json.tmp");
 
-    fs::write(&temporary_path, contents.as_bytes())
-        .map_err(|error| format!("Unable to write backup: {error}"))?;
+    let write_result = (|| -> Result<(), String> {
+        let mut temporary_file = fs::File::create(&temporary_path)
+            .map_err(|error| format!("Unable to create backup temporary file: {error}"))?;
+        temporary_file
+            .write_all(contents.as_bytes())
+            .map_err(|error| format!("Unable to write backup: {error}"))?;
+        temporary_file
+            .sync_all()
+            .map_err(|error| format!("Unable to flush backup: {error}"))?;
+        Ok(())
+    })();
+    if let Err(error) = write_result {
+        let _ = fs::remove_file(&temporary_path);
+        return Err(error);
+    }
 
     if let Err(replace_error) = fs::rename(&temporary_path, &path) {
         if path.exists() {
@@ -36,6 +50,13 @@ fn write_connection_backup(path: String, contents: String) -> Result<(), String>
             let _ = fs::remove_file(&temporary_path);
             return Err(format!("Unable to finalize backup: {replace_error}"));
         }
+    }
+
+    #[cfg(unix)]
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)
+            .and_then(|directory| directory.sync_all())
+            .map_err(|error| format!("Unable to flush backup directory: {error}"))?;
     }
 
     Ok(())
