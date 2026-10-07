@@ -102,7 +102,32 @@ fn save_vault(path: &PathBuf, vault: &VaultFile) -> Result<()> {
     Ok(())
 }
 
+fn fresh_salt() -> Vec<u8> {
+    let mut salt = vec![0u8; SALT_LENGTH];
+    rand::rng().fill(salt.as_mut_slice());
+    salt
+}
+
+fn ensure_salt(vault: &mut VaultFile) -> Result<bool> {
+    if vault.salt.len() == SALT_LENGTH {
+        return Ok(false);
+    }
+
+    if vault.entries.is_empty() {
+        vault.salt = fresh_salt();
+        return Ok(true);
+    }
+
+    anyhow::bail!(
+        "The encrypted SSH key vault has invalid metadata. Existing encrypted keys were preserved, but cannot be unlocked without the original vault file."
+    )
+}
+
 fn encryption_key(password: &str, salt: &[u8]) -> Result<[u8; 32]> {
+    if salt.len() != SALT_LENGTH {
+        anyhow::bail!("The encrypted SSH key vault has invalid salt metadata");
+    }
+
     let mut key = [0u8; 32];
     Argon2::default()
         .hash_password_into(password.as_bytes(), salt, &mut key)
@@ -130,10 +155,7 @@ pub async fn import_key(
     let file_path = vault_path(&app)?;
     let mut vault = load_vault(&file_path)?;
 
-    if vault.salt.len() != SALT_LENGTH {
-        vault.salt = vec![0u8; SALT_LENGTH];
-        rand::rng().fill(vault.salt.as_mut_slice());
-    }
+    ensure_salt(&mut vault)?;
 
     let key = encryption_key(&password, &vault.salt)?;
     let cipher = Aes256Gcm::new_from_slice(&key)
@@ -223,7 +245,11 @@ pub async fn list_keys(
         anyhow::bail!("Vault password is required");
     }
 
-    let vault = load_vault(&vault_path(&app)?)?;
+    let file_path = vault_path(&app)?;
+    let mut vault = load_vault(&file_path)?;
+    if ensure_salt(&mut vault)? {
+        save_vault(&file_path, &vault)?;
+    }
     let key = encryption_key(&password, &vault.salt)?;
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
@@ -263,6 +289,10 @@ pub async fn delete_key(
 
     let file_path = vault_path(&app)?;
     let mut vault = load_vault(&file_path)?;
+    if !vault.entries.contains_key(&id) {
+        anyhow::bail!("SSH key was not found in the vault");
+    }
+    ensure_salt(&mut vault)?;
     let key = encryption_key(&password, &vault.salt)?;
     let cipher = Aes256Gcm::new_from_slice(&key)
         .map_err(|error| anyhow::anyhow!("Unable to initialize vault encryption: {error}"))?;
@@ -279,8 +309,6 @@ pub async fn delete_key(
             .map_err(|_| anyhow::anyhow!("Incorrect vault password"))?;
     }
 
-    if vault.entries.remove(&id).is_none() {
-        anyhow::bail!("SSH key was not found in the vault");
-    }
+    vault.entries.remove(&id);
     save_vault(&file_path, &vault)
 }
