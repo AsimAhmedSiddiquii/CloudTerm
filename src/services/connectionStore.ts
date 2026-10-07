@@ -27,15 +27,19 @@ function normalizeConnection(value: unknown): SavedConnection | null {
   const bastion = rawBastion && typeof rawBastion.host === "string" && rawBastion.host.trim() && typeof rawBastion.username === "string" && rawBastion.username.trim() && typeof rawBastion.keyId === "string"
     ? {
         host: rawBastion.host.trim(),
-        port: typeof rawBastion.port === "number" && rawBastion.port >= 1 && rawBastion.port <= 65535 ? rawBastion.port : 22,
+        port: typeof rawBastion.port === "number" && Number.isInteger(rawBastion.port) && rawBastion.port >= 1 && rawBastion.port <= 65535 ? rawBastion.port : 22,
         username: rawBastion.username.trim(),
         keyId: rawBastion.keyId,
         keyName: typeof rawBastion.keyName === "string" ? rawBastion.keyName : "",
       }
     : undefined;
-  const port = typeof value.port === "number" && value.port >= 1 && value.port <= 65535 ? value.port : 22;
-  const timeout = typeof value.connectTimeoutSeconds === "number" ? Math.min(300, Math.max(5, value.connectTimeoutSeconds)) : undefined;
-  const keepAlive = typeof value.keepAliveSeconds === "number" ? Math.min(3600, Math.max(5, value.keepAliveSeconds)) : undefined;
+  const port = typeof value.port === "number" && Number.isInteger(value.port) && value.port >= 1 && value.port <= 65535 ? value.port : 22;
+  const timeout = typeof value.connectTimeoutSeconds === "number" && Number.isFinite(value.connectTimeoutSeconds)
+    ? Math.min(300, Math.max(5, Math.round(value.connectTimeoutSeconds)))
+    : undefined;
+  const keepAlive = typeof value.keepAliveSeconds === "number" && Number.isFinite(value.keepAliveSeconds)
+    ? Math.min(3600, Math.max(5, Math.round(value.keepAliveSeconds)))
+    : undefined;
 
   return {
     id: typeof value.id === "string" && value.id ? value.id : crypto.randomUUID(),
