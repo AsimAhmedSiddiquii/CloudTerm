@@ -462,6 +462,44 @@ pub async fn disconnect(state: &SshState, session_id: String) -> Result<()> {
     Ok(())
 }
 
+pub async fn disconnect_all(state: &SshState) {
+    let pending_host_keys = {
+        let mut pending = state.pending_host_keys.lock().await;
+        std::mem::take(&mut *pending)
+    };
+    for (_, sender) in pending_host_keys {
+        let _ = sender.send(false);
+    }
+
+    let pending_key_passphrases = {
+        let mut pending = state.pending_key_passphrases.lock().await;
+        std::mem::take(&mut *pending)
+    };
+    for (_, sender) in pending_key_passphrases {
+        let _ = sender.send(String::new());
+    }
+
+    let forwards = {
+        let mut forwards = state.forwards.lock().await;
+        std::mem::take(&mut *forwards)
+    };
+    for (_, forward) in forwards {
+        forward.abort();
+    }
+
+    let sessions = {
+        let mut active = state.active.lock().await;
+        std::mem::take(&mut *active)
+    };
+    for (_, session) in sessions {
+        let _ = session.writer.lock().await.close().await;
+        let _ = session
+            .session
+            .disconnect(Disconnect::ByApplication, "Application closing", "English")
+            .await;
+    }
+}
+
 pub async fn start_local_forward(
     state: &SshState,
     session_id: String,

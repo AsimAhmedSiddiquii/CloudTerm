@@ -23,6 +23,7 @@
 - Encrypted vault and connection-backup writes now flush durable temporary files before replacement.
 - Backup imports validate connection metadata and avoid duplicate saved profiles.
 - Key management warns before deleting keys referenced by saved connections and clears stale keys after unlock failures.
+- Closing the desktop window now cancels pending SSH prompts, stops local forwards, and disconnects active sessions cleanly.
 - Tagged releases publish the verified Windows, macOS, and Linux artifacts with consistent version metadata.
 
 ### Release notes

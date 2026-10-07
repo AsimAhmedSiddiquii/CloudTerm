@@ -9,6 +9,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use ssh::client::SshState;
+use tauri::{Manager, WindowEvent};
 
 #[tauri::command]
 async fn aws_discover_instances(
@@ -325,6 +326,12 @@ pub fn run() {
             tauri_plugin_store::Builder::new()
                 .build()
         )
+        .on_window_event(|window, event| {
+            if matches!(event, WindowEvent::CloseRequested { .. }) {
+                let state = window.state::<SshState>().inner().clone();
+                tauri::async_runtime::block_on(ssh::client::disconnect_all(&state));
+            }
+        })
         .invoke_handler(
             tauri::generate_handler![
                 connect_aws_ssh,
