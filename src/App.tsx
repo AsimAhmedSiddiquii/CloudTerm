@@ -139,7 +139,7 @@ function App() {
       counts[keyId] = (counts[keyId] ?? 0) + 1;
     }
     return counts;
-  }, {});
+  }, Object.create(null) as Record<string, number>);
 
   const [splitMode, setSplitMode] =
     useState(false);
