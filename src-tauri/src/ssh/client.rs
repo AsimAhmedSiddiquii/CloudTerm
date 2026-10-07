@@ -119,12 +119,12 @@ pub struct BastionConnection {
     pub key_contents: String,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct SshState {
-    active: Mutex<HashMap<String, ActiveSession>>,
-    pending_host_keys: Mutex<HashMap<String, oneshot::Sender<bool>>>,
-    pending_key_passphrases: Mutex<HashMap<String, oneshot::Sender<String>>>,
-    forwards: Mutex<HashMap<String, JoinHandle<()>>>,
+    active: Arc<Mutex<HashMap<String, ActiveSession>>>,
+    pending_host_keys: Arc<Mutex<HashMap<String, oneshot::Sender<bool>>>>,
+    pending_key_passphrases: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,
+    forwards: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
 }
 
 async fn decode_key(
@@ -293,7 +293,7 @@ pub async fn connect_interactive(
 
     if let Some(old) = state.active.lock().await.insert(
         session_id.clone(),
-        ActiveSession { session, _upstream: upstream, writer },
+        ActiveSession { session: session.clone(), _upstream: upstream, writer },
     ) {
         let _ = old.writer.close().await;
         let _ = old
@@ -302,6 +302,8 @@ pub async fn connect_interactive(
             .await;
     }
 
+    let reader_state = state.clone();
+    let reader_session = session.clone();
     tokio::spawn(async move {
         let output_event = format!("ssh-output:{session_id}");
         let closed_event = format!("ssh-closed:{session_id}");
@@ -317,6 +319,30 @@ pub async fn connect_interactive(
                 _ => {}
             }
         }
+
+        let removed = {
+            let mut active = reader_state.active.lock().await;
+            if active
+                .get(&session_id)
+                .map(|current| Arc::ptr_eq(&current.session, &reader_session))
+                .unwrap_or(false)
+            {
+                active.remove(&session_id);
+                true
+            } else {
+                false
+            }
+        };
+
+        if removed {
+            if let Some(forward) = reader_state.forwards.lock().await.remove(&session_id) {
+                forward.abort();
+            }
+            let _ = reader_session
+                .disconnect(Disconnect::ByApplication, "Remote session closed", "English")
+                .await;
+        }
+
         let _ = app.emit(&closed_event, ());
     });
 
