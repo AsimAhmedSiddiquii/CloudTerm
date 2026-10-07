@@ -266,6 +266,8 @@ CloudTerm currently stores saved connection metadata locally.
 
 Imported private keys are encrypted in the application data directory and connections store only a vault key identifier. The vault password is not persisted. Passphrases for encrypted OpenSSH keys are requested only for the active connection.
 
+Terminal styles use Tauri's per-page CSP nonce. The Vite compatibility transform attaches this nonce before xterm inserts its generated styles, so the terminal font, ANSI colors, cursor, and spacing work in packaged builds without relaxing the content security policy. The transform checks the installed xterm module and stops the build if an upgrade changes the patched style creation sites.
+
 Remaining security improvements include:
 
 - Windows Hello / biometric vault unlock
