@@ -109,7 +109,7 @@ impl client::Handler for Client {
 struct ActiveSession {
     session: Arc<client::Handle<Client>>,
     _upstream: Option<Arc<client::Handle<Client>>>,
-    writer: ChannelWriteHalf<client::Msg>,
+    writer: Arc<Mutex<ChannelWriteHalf<client::Msg>>>,
 }
 
 pub struct BastionConnection {
@@ -309,9 +309,13 @@ pub async fn connect_interactive(
 
     if let Some(old) = state.active.lock().await.insert(
         session_id.clone(),
-        ActiveSession { session: session.clone(), _upstream: upstream, writer },
+        ActiveSession {
+            session: session.clone(),
+            _upstream: upstream,
+            writer: Arc::new(Mutex::new(writer)),
+        },
     ) {
-        let _ = old.writer.close().await;
+        let _ = old.writer.lock().await.close().await;
         let _ = old
             .session
             .disconnect(Disconnect::ByApplication, "Replacing terminal", "English")
@@ -397,13 +401,14 @@ pub async fn send_input(
     session_id: String,
     data: String,
 ) -> Result<()> {
-    let active = state.active.lock().await;
-    active
+    let writer = state
+        .active
+        .lock()
+        .await
         .get(&session_id)
-        .context("No active SSH session")?
-        .writer
-        .data_bytes(data.into_bytes())
-        .await?;
+        .map(|active| active.writer.clone())
+        .context("No active SSH session")?;
+    writer.lock().await.data_bytes(data.into_bytes()).await?;
     Ok(())
 }
 
@@ -413,13 +418,14 @@ pub async fn resize_terminal(
     cols: u32,
     rows: u32,
 ) -> Result<()> {
-    let active = state.active.lock().await;
-    active
+    let writer = state
+        .active
+        .lock()
+        .await
         .get(&session_id)
-        .context("No active SSH session")?
-        .writer
-        .window_change(cols, rows, 0, 0)
-        .await?;
+        .map(|active| active.writer.clone())
+        .context("No active SSH session")?;
+    writer.lock().await.window_change(cols, rows, 0, 0).await?;
     Ok(())
 }
 
@@ -428,7 +434,7 @@ pub async fn disconnect(state: &SshState, session_id: String) -> Result<()> {
         forward.abort();
     }
     if let Some(session) = state.active.lock().await.remove(&session_id) {
-        let _ = session.writer.close().await;
+        let _ = session.writer.lock().await.close().await;
         session
             .session
             .disconnect(Disconnect::ByApplication, "User disconnected", "English")
