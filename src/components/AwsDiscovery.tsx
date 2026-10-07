@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Ec2Instance } from "../services/aws";
 import { discoverInstances } from "../services/aws";
 
@@ -13,15 +13,26 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
   const [instances, setInstances] = useState<Ec2Instance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const requestGeneration = useRef(0);
 
   async function discover() {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError("");
     setInstances([]);
-    try { setInstances(await discoverInstances(profile, region)); }
-    catch (err) { setError(`Unable to discover EC2 instances: ${String(err)}`); }
-    finally { setLoading(false); }
+    try {
+      const nextInstances = await discoverInstances(profile, region);
+      if (generation === requestGeneration.current) setInstances(nextInstances);
+    } catch (err) {
+      if (generation === requestGeneration.current) setError(`Unable to discover EC2 instances: ${String(err)}`);
+    } finally {
+      if (generation === requestGeneration.current) setLoading(false);
+    }
   }
+
+  useEffect(() => () => {
+    requestGeneration.current += 1;
+  }, []);
 
   return (
     <div className="discovery-page">

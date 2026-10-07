@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SshConfigEntry } from "../services/sshConfig";
 import { listSshConfigEntries } from "../services/sshConfig";
 
@@ -11,16 +11,19 @@ export default function SshConfigImport({ onClose, onUseEntry }: Props) {
   const [entries, setEntries] = useState<SshConfigEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const requestGeneration = useRef(0);
 
   async function refresh() {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError("");
     try {
-      setEntries(await listSshConfigEntries());
+      const nextEntries = await listSshConfigEntries();
+      if (generation === requestGeneration.current) setEntries(nextEntries);
     } catch (err) {
-      setError(`Unable to read SSH config: ${String(err)}`);
+      if (generation === requestGeneration.current) setError(`Unable to read SSH config: ${String(err)}`);
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }
 
@@ -28,6 +31,9 @@ export default function SshConfigImport({ onClose, onUseEntry }: Props) {
     // Intentional initial synchronization with the user's local SSH config.
     // oxlint-disable-next-line react-hooks/set-state-in-effect
     refresh().catch(() => { });
+    return () => {
+      requestGeneration.current += 1;
+    };
   }, []);
 
   return (
