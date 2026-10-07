@@ -507,7 +507,7 @@ export default function AwsConnectionForm({
                     )}
 
                     {error && (
-                        <div className="form-error">
+                        <div className="form-error" role="alert">
                             {error}
                         </div>
                     )}

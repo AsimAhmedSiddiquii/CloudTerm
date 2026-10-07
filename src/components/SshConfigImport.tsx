@@ -37,7 +37,7 @@ export default function SshConfigImport({ onClose, onUseEntry }: Props) {
           <div><p className="eyebrow">SSH CONFIG</p><h1>Import hosts</h1><p>Choose a host from your local ~/.ssh/config. Existing saved connections stay unchanged.</p></div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Close SSH config">×</button>
         </div>
-        {error && <div className="form-error">{error}</div>}
+        {error && <div className="form-error" role="alert">{error}</div>}
         {loading ? <div className="empty-state">Reading SSH config…</div> : entries.length === 0 ? <div className="empty-state">No usable host entries found in ~/.ssh/config.</div> : (
           <div className="instance-list">
             {entries.map((entry) => <article className="instance-card" key={`${entry.alias}-${entry.host}-${entry.port}`}>

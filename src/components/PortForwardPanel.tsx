@@ -72,7 +72,7 @@ export default function PortForwardPanel({ sessionId, onClose }: Props) {
         This forwards on <code>{localHost.trim()}</code>, which may expose the tunnel to other devices on the network.
       </div>
     )}
-    {error && <div className="form-error">{error}</div>}
+    {error && <div className="form-error" role="alert">{error}</div>}
     {boundAddress && <div className="forward-active">Forwarding active on <code>{boundAddress}</code> → <code>{remoteHost}:{remotePort}</code></div>}
     <div className="forward-actions">
       {boundAddress ? <button className="secondary-button" type="button" onClick={stop}>Stop forwarding</button> : <button className="primary-button" type="button" onClick={start} disabled={loading}>{loading ? "Starting…" : "Start forwarding"}</button>}

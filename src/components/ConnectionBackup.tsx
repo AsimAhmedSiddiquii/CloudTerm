@@ -47,6 +47,6 @@ export default function ConnectionBackup({ connections, onImport, onClose }: Pro
     <div className="page-heading-row"><div><p className="eyebrow">PORTABILITY</p><h1>Connection backup</h1><p>Move connection metadata between machines without exporting private keys or vault contents.</p></div><button className="icon-button" type="button" onClick={onClose}>×</button></div>
     <div className="backup-summary"><strong>{connections.length}</strong><span>saved connection{connections.length === 1 ? "" : "s"}</span></div>
     <div className="backup-actions"><button className="secondary-button" type="button" onClick={exportConnections} disabled={!connections.length}>Export JSON</button><button className="primary-button" type="button" onClick={importConnections} disabled={loading}>{loading ? "Importing…" : "Import JSON"}</button></div>
-    {message && <div className="form-success">{message}</div>}{error && <div className="form-error">{error}</div>}
+    {message && <div className="form-success" role="status">{message}</div>}{error && <div className="form-error" role="alert">{error}</div>}
   </section></div>;
 }

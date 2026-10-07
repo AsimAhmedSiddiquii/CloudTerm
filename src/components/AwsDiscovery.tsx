@@ -35,7 +35,7 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
           <label>Region <span className="optional-label">Optional</span><input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="us-east-1" disabled={loading} /></label>
           <button className="primary-button discovery-button" type="button" onClick={discover} disabled={loading}>{loading ? "Discovering…" : "Discover"}</button>
         </div>
-        {error && <div className="form-error">{error}</div>}
+        {error && <div className="form-error" role="alert">{error}</div>}
         <div className="instance-list">
           {!loading && !error && instances.length === 0 && <div className="empty-state">No instances loaded yet. Choose a profile or region, then run discovery.</div>}
           {instances.map((instance) => {

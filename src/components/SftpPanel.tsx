@@ -159,7 +159,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
         </div>
       )}
 
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
       {success && <div className="form-success" role="status">{success}</div>}
 
       <div className="sftp-list">

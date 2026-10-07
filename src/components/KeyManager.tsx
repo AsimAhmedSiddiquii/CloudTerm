@@ -107,7 +107,7 @@ export default function KeyManager({
         <small>The password is kept in memory for this session only.</small>
       </section>
 
-      {error && <div className="form-error">{error}</div>}
+      {error && <div className="form-error" role="alert">{error}</div>}
 
       <section className="key-list-card">
         <div className="key-list-header">
