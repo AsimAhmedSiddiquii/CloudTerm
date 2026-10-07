@@ -38,6 +38,11 @@ import type { ImportedKey } from "./services/keyVault";
 import type { Ec2Instance } from "./services/aws";
 import type { SshConfigEntry } from "./services/sshConfig";
 import type { SavedConnection as BackupConnection } from "./types/connection";
+import {
+  findUpdate,
+  installUpdate,
+  isUpdaterConfigured,
+} from "./services/updater";
 
 import type {
   ConnectionDraft,
@@ -122,6 +127,8 @@ function App() {
   const [showBackup, setShowBackup] = useState(false);
   const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [updaterConfigured, setUpdaterConfigured] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
 
   const keyUsageCounts = connections.reduce<Record<string, number>>((counts, connection) => {
     const usedKeyIds = new Set([connection.keyId]);
@@ -150,6 +157,36 @@ function App() {
       console.error
     );
   }, []);
+
+  useEffect(() => {
+    isUpdaterConfigured()
+      .then(setUpdaterConfigured)
+      .catch(() => setUpdaterConfigured(false));
+  }, []);
+
+  async function handleCheckForUpdates() {
+    setUpdateStatus("Checking…");
+    try {
+      const update = await findUpdate();
+      if (!update) {
+        setUpdateStatus("Up to date");
+        return;
+      }
+
+      const details = update.notes?.trim()
+        ? `\n\n${update.notes.trim()}`
+        : "";
+      if (!window.confirm(`CloudTerm ${update.version} is available.${details}\n\nInstall it now?`)) {
+        setUpdateStatus(null);
+        return;
+      }
+
+      setUpdateStatus("Installing…");
+      await installUpdate();
+    } catch (error) {
+      setUpdateStatus(errorMessage(error, "Unable to check for updates."));
+    }
+  }
 
   async function handleSave(
     draft: ConnectionDraft,
@@ -503,6 +540,9 @@ function App() {
         onDiscover={openDiscovery}
         onImportConfig={openSshConfig}
         onBackup={openBackup}
+        updaterConfigured={updaterConfigured}
+        updateStatus={updateStatus}
+        onCheckForUpdates={handleCheckForUpdates}
       />
 
       <main className="main-content">

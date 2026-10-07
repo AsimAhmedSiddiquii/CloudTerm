@@ -316,8 +316,22 @@ async fn vault_delete_key(
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn updater_configured() -> bool {
+    option_env!("CLOUDTERM_UPDATER_PUBLIC_KEY")
+        .map(|key| !key.trim().is_empty())
+        .unwrap_or(false)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let updater_builder = match option_env!("CLOUDTERM_UPDATER_PUBLIC_KEY") {
+        Some(public_key) if !public_key.trim().is_empty() => {
+            tauri_plugin_updater::Builder::new().pubkey(public_key)
+        }
+        _ => tauri_plugin_updater::Builder::new(),
+    };
+
     tauri::Builder::default()
         .manage(SshState::default())
         .manage(vault::VaultState::default())
@@ -326,6 +340,8 @@ pub fn run() {
             tauri_plugin_store::Builder::new()
                 .build()
         )
+        .plugin(tauri_plugin_process::init())
+        .plugin(updater_builder.build())
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::CloseRequested { .. }) {
                 let state = window.state::<SshState>().inner().clone();
@@ -353,6 +369,7 @@ pub fn run() {
                 write_connection_backup,
                 read_connection_backup,
                 ssh_config_entries,
+                updater_configured,
             ]
         )
         .run(tauri::generate_context!())

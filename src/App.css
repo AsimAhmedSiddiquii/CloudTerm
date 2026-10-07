@@ -1519,6 +1519,24 @@ body {
   font-size: 11px;
 }
 
+.sidebar-update-button {
+  max-width: 118px;
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid rgba(88, 166, 255, 0.28);
+  border-radius: 5px;
+  background: rgba(56, 139, 253, 0.08);
+  color: #79c0ff;
+  font: inherit;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-update-button:hover {
+  background: rgba(56, 139, 253, 0.18);
+}
+
 .terminal-status {
   font-size: 0;
 }

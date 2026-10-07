@@ -21,13 +21,16 @@ publishing a public release.
 1. Generate a dedicated updater key pair with the Tauri CLI and keep the private
    key in a protected secret store. Losing the private key prevents updates to
    already-installed clients.
-2. Add the generated public key and an HTTPS update endpoint to the Tauri updater
-   configuration.
+2. Configure the repository variable `CLOUDTERM_UPDATER_PUBLIC_KEY` with the
+   generated public key. CloudTerm injects it into tagged builds without
+   storing it in the repository; the updater endpoint is the GitHub Release
+   `latest.json` asset.
 3. Configure the release environment with:
    - `TAURI_SIGNING_PRIVATE_KEY`
    - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-4. Enable updater artifact generation in the release build and publish each
-   platform's signed bundle and signature file together with its update manifest.
+4. The tagged workflow enables updater artifact generation through
+   `src-tauri/tauri.release.conf.json` and publishes each platform's signed
+   bundle, signature file, and generated `latest.json` manifest.
 5. Exercise an update from the previous release on Windows, macOS, and Linux;
    verify that an invalid signature is rejected.
 

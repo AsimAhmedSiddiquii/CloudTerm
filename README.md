@@ -322,6 +322,8 @@ Remaining before a broad public distribution:
 
 The repository includes a cross-platform release workflow that automates Windows, macOS, and Linux builds plus checksum manifests. Tagged builds are blocked from public publication until the repository variable `CLOUDTERM_PUBLIC_RELEASE_READY=true` is set after completing the signing and validation checklist. Code signing and update signing still need to be configured before public distribution.
 
+Signed builds can expose **Check for updates** in the sidebar. The action remains hidden in local and unsigned builds until `CLOUDTERM_UPDATER_PUBLIC_KEY` and the Tauri signing secrets are configured.
+
 See [RELEASE_SIGNING.md](RELEASE_SIGNING.md) for the signing key, certificate, updater, and final release-validation checklist.
 
 ## License

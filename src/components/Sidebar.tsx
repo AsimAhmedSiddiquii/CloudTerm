@@ -23,6 +23,9 @@ interface Props {
   onDiscover: () => void;
   onImportConfig: () => void;
   onBackup: () => void;
+  updaterConfigured: boolean;
+  updateStatus: string | null;
+  onCheckForUpdates: () => void;
 }
 
 export default function Sidebar({
@@ -37,6 +40,9 @@ export default function Sidebar({
   onDiscover,
   onImportConfig,
   onBackup,
+  updaterConfigured,
+  updateStatus,
+  onCheckForUpdates,
 }: Props) {
   const [query, setQuery] = useState("");
   const [appVersion, setAppVersion] = useState<string | null>(null);
@@ -228,6 +234,16 @@ export default function Sidebar({
 
       <div className="sidebar-footer">
         <span>AWS · SSH Manager</span>
+        {updaterConfigured && (
+          <button
+            className="sidebar-update-button"
+            type="button"
+            onClick={onCheckForUpdates}
+            aria-label="Check for application updates"
+          >
+            {updateStatus ?? "Check for updates"}
+          </button>
+        )}
         <span className="app-version">{appVersion ? `v${appVersion}` : "CloudTerm"}</span>
       </div>
     </aside>
