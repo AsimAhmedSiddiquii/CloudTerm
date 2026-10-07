@@ -106,7 +106,16 @@ export default function KeyManager({
               aria-label={showPassword ? "Hide vault password" : "Show vault password"}
               title={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? "Hide" : "Show"}
+              {showPassword ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.8 10.8 0 0 1 12 5c5.2 0 8.7 4.4 9.8 7a16 16 0 0 1-3.1 4.5M6.2 6.2C3.9 7.8 2.6 10.1 2.2 12c.6 2.7 4.2 7 9.8 7 1 0 2-.2 2.8-.5" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2.2 12c1.1-2.6 4.6-7 9.8-7s8.7 4.4 9.8 7c-1.1 2.6-4.6 7-9.8 7S3.3 14.6 2.2 12Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+              )}
             </button>
           </div>
           <button className="secondary-button" type="button" onClick={refresh} disabled={loading || !password}>
