@@ -497,16 +497,17 @@ pub async fn stop_local_forward(state: &SshState, session_id: String) -> Result<
 }
 
 async fn open_sftp(state: &SshState, session_id: &str) -> Result<SftpSession> {
-    let active = state.active.lock().await;
-    let session = active
-        .get(session_id)
-        .context("No active SSH session")?;
+    let session = {
+        let active = state.active.lock().await;
+        active
+            .get(session_id)
+            .map(|active| active.session.clone())
+            .context("No active SSH session")?
+    };
     let channel = session
-        .session
         .channel_open_session()
         .await
         .context("Unable to open the SFTP channel")?;
-    drop(active);
     channel
         .request_subsystem(true, "sftp")
         .await
