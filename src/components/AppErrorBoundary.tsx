@@ -7,13 +7,14 @@ type AppErrorBoundaryProps = {
 type AppErrorBoundaryState = {
   hasError: boolean;
   errorMessage: string;
+  errorStack: string;
 };
 
 export default class AppErrorBoundary extends React.Component<
   AppErrorBoundaryProps,
   AppErrorBoundaryState
 > {
-  state: AppErrorBoundaryState = { hasError: false, errorMessage: "" };
+  state: AppErrorBoundaryState = { hasError: false, errorMessage: "", errorStack: "" };
 
   static getDerivedStateFromError(): Partial<AppErrorBoundaryState> {
     return { hasError: true };
@@ -21,7 +22,10 @@ export default class AppErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("CloudTerm UI error", error, errorInfo);
-    this.setState({ errorMessage: error.message || String(error) });
+    this.setState({
+      errorMessage: error.message || String(error),
+      errorStack: [error.stack, errorInfo.componentStack].filter(Boolean).join("\n\n"),
+    });
   }
 
   render() {
@@ -43,6 +47,12 @@ export default class AppErrorBoundary extends React.Component<
           </p>
           {this.state.errorMessage && (
             <pre className="error-boundary-details">{this.state.errorMessage}</pre>
+          )}
+          {this.state.errorStack && (
+            <details className="error-boundary-stack">
+              <summary>Technical stack trace</summary>
+              <pre>{this.state.errorStack}</pre>
+            </details>
           )}
           <button type="button" onClick={() => window.location.reload()}>
             Reload application

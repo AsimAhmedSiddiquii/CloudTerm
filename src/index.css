@@ -89,6 +89,30 @@ body {
   overflow-wrap: anywhere;
 }
 
+.error-boundary-stack {
+  margin: 0 0 24px;
+  color: #a9b8cc;
+  font-size: 12px;
+}
+
+.error-boundary-stack summary {
+  cursor: pointer;
+  color: #bae6fd;
+}
+
+.error-boundary-stack pre {
+  max-height: 220px;
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #060d17;
+  color: #cbd5e1;
+  font: 11px/1.45 Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .error-boundary button {
   min-height: 42px;
   padding: 0 18px;
