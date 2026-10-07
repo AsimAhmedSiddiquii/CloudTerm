@@ -320,7 +320,7 @@ Remaining before a broad public distribution:
 5. Add signed automatic updates.
 6. Complete the deferred end-to-end test pass, including SSH, SFTP, forwarding, and backup/restore flows.
 
-The repository includes a cross-platform release workflow that automates Windows, macOS, and Linux builds plus checksum manifests. Code signing and update signing still need to be configured before public distribution.
+The repository includes a cross-platform release workflow that automates Windows, macOS, and Linux builds plus checksum manifests. Tagged builds are blocked from public publication until the repository variable `CLOUDTERM_PUBLIC_RELEASE_READY=true` is set after completing the signing and validation checklist. Code signing and update signing still need to be configured before public distribution.
 
 See [RELEASE_SIGNING.md](RELEASE_SIGNING.md) for the signing key, certificate, updater, and final release-validation checklist.
 

@@ -185,6 +185,7 @@ jobs:
       - bundle-windows
       - bundle-macos
       - bundle-linux
+      - release-readiness
     runs-on: ubuntu-22.04
 
     steps:
@@ -243,4 +244,22 @@ jobs:
             --verify-tag \
             --generate-notes \
             --title "CloudTerm ${GITHUB_REF_NAME}"
+
+  release-readiness:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - bundle-windows
+      - bundle-macos
+      - bundle-linux
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Require public-release approval
+        env:
+          RELEASE_READY: ${{ vars.CLOUDTERM_PUBLIC_RELEASE_READY }}
+        run: |
+          if [[ "$RELEASE_READY" != "true" ]]; then
+            echo "Public release blocked: set the repository variable CLOUDTERM_PUBLIC_RELEASE_READY=true only after completing RELEASE_SIGNING.md." >&2
+            exit 1
+          fi
 

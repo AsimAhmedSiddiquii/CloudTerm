@@ -33,6 +33,11 @@ publishing a public release.
 
 - Keep build jobs read-only; only the release publisher needs repository write
   permission.
+- The tagged release workflow requires the repository variable
+  `CLOUDTERM_PUBLIC_RELEASE_READY=true` before it publishes a GitHub Release.
+  Leave it unset or false while signing, clean-machine, and upgrade validation
+  are incomplete; tagged builds will still build and validate packages but will
+  stop before publication.
 - Do not publish a broad public release until code signing, update signing,
   installer upgrade/uninstall validation, clean-machine validation, and the
   end-to-end SSH/SFTP/forwarding/backup pass are complete.
