@@ -130,7 +130,13 @@ export default function KeyManager({
                   <strong>{key.name}</strong>
                   <code>{key.id.slice(0, 12)}…</code>
                 </div>
-                <button className="connection-delete visible" type="button" onClick={() => remove(key)} title="Delete key">
+                <button
+                  className="connection-delete visible"
+                  type="button"
+                  onClick={() => remove(key)}
+                  title="Delete key"
+                  aria-label={`Delete ${key.name}`}
+                >
                   ×
                 </button>
               </div>
