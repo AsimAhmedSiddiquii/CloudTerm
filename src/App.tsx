@@ -628,6 +628,7 @@ function App() {
           </div>
         ) : showNewConnection ? (
           <AwsConnectionForm
+            key={`${editingConnection?.id ?? "new"}:${connectionPrefill?.host ?? ""}:${connectionPrefill?.name ?? ""}`}
             initialConnection={
               editingConnection
             }
