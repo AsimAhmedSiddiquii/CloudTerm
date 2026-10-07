@@ -325,13 +325,6 @@ fn updater_configured() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let updater_builder = match option_env!("CLOUDTERM_UPDATER_PUBLIC_KEY") {
-        Some(public_key) if !public_key.trim().is_empty() => {
-            tauri_plugin_updater::Builder::new().pubkey(public_key)
-        }
-        _ => tauri_plugin_updater::Builder::new(),
-    };
-
     tauri::Builder::default()
         .manage(SshState::default())
         .manage(vault::VaultState::default())
@@ -341,7 +334,18 @@ pub fn run() {
                 .build()
         )
         .plugin(tauri_plugin_process::init())
-        .plugin(updater_builder.build())
+        .setup(|app| {
+            if let Some(public_key) = option_env!("CLOUDTERM_UPDATER_PUBLIC_KEY")
+                .filter(|key| !key.trim().is_empty())
+            {
+                app.handle().plugin(
+                    tauri_plugin_updater::Builder::new()
+                        .pubkey(public_key)
+                        .build(),
+                )?;
+            }
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::CloseRequested { .. }) {
                 let state = window.state::<SshState>().inner().clone();
