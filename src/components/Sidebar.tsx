@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import type { SavedConnection } from "../types/connection";
 
 import cloudTermIcon from "../assets/cloudterm-icon.png";
@@ -38,7 +39,27 @@ export default function Sidebar({
   onBackup,
 }: Props) {
   const [query, setQuery] = useState("");
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
+
+  useEffect(() => {
+    let mounted = true;
+
+    getVersion()
+      .then((version) => {
+        if (mounted) {
+          setAppVersion(version);
+        }
+      })
+      .catch(() => {
+        // The browser-only development preview has no Tauri app metadata.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const visibleConnections = normalizedQuery
     ? connections.filter((connection) =>
       [connection.name, connection.host, connection.username, connection.keyName]
@@ -205,7 +226,7 @@ export default function Sidebar({
 
       <div className="sidebar-footer">
         <span>AWS · SSH Manager</span>
-        <span className="app-version">v0.1.0</span>
+        <span className="app-version">{appVersion ? `v${appVersion}` : "CloudTerm"}</span>
       </div>
     </aside>
   );
