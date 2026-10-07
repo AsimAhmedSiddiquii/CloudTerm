@@ -157,6 +157,19 @@ function App() {
 
   const [splitStatuses, setSplitStatuses] =
     useState<Record<string, ConnectionStatus>>({});
+  const [showSplitPicker, setShowSplitPicker] = useState(false);
+
+  const availableSplitConnections = activeConnection
+    ? connections.filter((connection) =>
+        connection.id !== activeConnection.id &&
+        !(
+          connection.host === activeConnection.host &&
+          connection.port === activeConnection.port &&
+          connection.username === activeConnection.username
+        ) &&
+        !splitConnections.some((open) => open.id === connection.id)
+      )
+    : [];
 
   // Intentional mount-time synchronization with the persistent store.
   useEffect(() => {
@@ -249,7 +262,7 @@ function App() {
     setActiveConnection({
       ...draft,
 
-      id: `temporary-${Date.now()}`,
+      id: editingConnection?.id ?? `temporary-${Date.now()}`,
 
       provider: "aws",
 
@@ -548,17 +561,32 @@ function App() {
     if (splitMode) {
       setSplitMode(false);
       setSplitConnections([]);
+      setShowSplitPicker(false);
       return;
     }
 
-    const firstOther = connections.find(
-      (connection) => connection.id !== activeConnection.id
-    );
+    setShowSplitPicker(true);
+  }
 
-    setSplitMode(true);
-    if (firstOther) {
-      setSplitConnections([firstOther]);
+  function openInSplit(connection: SavedConnection) {
+    if (!activeConnection || splitConnections.length >= 3) {
+      return;
     }
+
+    const isCurrentConnection =
+      connection.id === activeConnection.id ||
+      (
+        connection.host === activeConnection.host &&
+        connection.port === activeConnection.port &&
+        connection.username === activeConnection.username
+      );
+    if (isCurrentConnection || splitConnections.some((open) => open.id === connection.id)) {
+      return;
+    }
+
+    setSplitConnections((current) => [...current, connection].slice(0, 3));
+    setSplitMode(true);
+    setShowSplitPicker(false);
   }
 
   function setSplitStatus(
@@ -689,15 +717,7 @@ function App() {
               <button
                 className="add-terminal-pane"
                 type="button"
-                onClick={() => {
-                  const next = connections.find((item) =>
-                    item.id !== activeConnection.id &&
-                    !splitConnections.some((open) => open.id === item.id)
-                  );
-                  if (next) {
-                    setSplitConnections((current) => [...current, next].slice(0, 3));
-                  }
-                }}
+                onClick={() => setShowSplitPicker(true)}
               >
                 + Add terminal pane
               </button>
@@ -752,6 +772,36 @@ function App() {
           )}
         </Suspense>
       </main>
+
+      {showSplitPicker && activeConnection && (
+        <div className="modal-backdrop">
+          <section className="trust-dialog split-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="split-picker-title">
+            <p className="eyebrow">SPLIT VIEW</p>
+            <h2 id="split-picker-title">Choose another connection</h2>
+            <p>Select a different saved connection to open beside {activeConnection.name}.</p>
+            <div className="split-picker-list">
+              {availableSplitConnections.length === 0 ? (
+                <div className="split-picker-empty">No other saved connections are available.</div>
+              ) : availableSplitConnections.map((connection) => (
+                <button
+                  className="split-picker-option"
+                  type="button"
+                  key={connection.id}
+                  onClick={() => openInSplit(connection)}
+                >
+                  <strong>{connection.name}</strong>
+                  <span>{connection.username}@{connection.host}:{connection.port}</span>
+                </button>
+              ))}
+            </div>
+            <div className="trust-actions">
+              <button className="secondary-button" type="button" onClick={() => setShowSplitPicker(false)}>
+                Cancel
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {showVaultSetup && (
         <div className="modal-backdrop">
