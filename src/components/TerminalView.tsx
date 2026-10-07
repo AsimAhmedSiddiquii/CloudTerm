@@ -367,7 +367,7 @@ export default function TerminalView({
   return (
     <div className="terminal-page">
       <div className="terminal-header">
-        <div>
+        <div className="terminal-identity">
           <strong>
             {username}@{host}
           </strong>
@@ -377,49 +377,59 @@ export default function TerminalView({
           </span>
         </div>
 
-        {onSplitToggle && (
+        <div className="terminal-actions">
+          {onSplitToggle && (
+            <button
+              onClick={onSplitToggle}
+              className="split-button"
+              type="button"
+            >
+              <span className="terminal-action-icon" aria-hidden="true">⊞</span>
+              {splitMode ? "Single" : "Split"}
+            </button>
+          )}
+
+          {onSftpOpen && (
+            <button
+              onClick={onSftpOpen}
+              className="split-button"
+              type="button"
+            >
+              <span className="terminal-action-icon" aria-hidden="true">▰</span>
+              Files
+            </button>
+          )}
+
+          {onForwardOpen && (
+            <button onClick={onForwardOpen} className="split-button" type="button">
+              <span className="terminal-action-icon" aria-hidden="true">⇄</span>
+              Forward
+            </button>
+          )}
+
+          {(status === "failed" || status === "disconnected") && (
+            <button
+              onClick={() => {
+                onRetry?.();
+                setRetryCount((count) => count + 1);
+              }}
+              className="split-button"
+              type="button"
+            >
+              <span className="terminal-action-icon" aria-hidden="true">↻</span>
+              Reconnect
+            </button>
+          )}
+
           <button
-            onClick={onSplitToggle}
-            className="split-button"
+            onClick={onBack}
+            className="disconnect-button"
             type="button"
           >
-            {splitMode ? "Single view" : "Split view"}
+            <span className="terminal-action-icon" aria-hidden="true">⏻</span>
+            Disconnect
           </button>
-        )}
-
-        {onSftpOpen && (
-          <button
-            onClick={onSftpOpen}
-            className="split-button"
-            type="button"
-          >
-            Files
-          </button>
-        )}
-
-        {onForwardOpen && (
-          <button onClick={onForwardOpen} className="split-button" type="button">Forward</button>
-        )}
-
-        {(status === "failed" || status === "disconnected") && (
-          <button
-            onClick={() => {
-              onRetry?.();
-              setRetryCount((count) => count + 1);
-            }}
-            className="split-button"
-            type="button"
-          >
-            Reconnect
-          </button>
-        )}
-
-        <button
-          onClick={onBack}
-          className="disconnect-button"
-        >
-          Disconnect
-        </button>
+        </div>
       </div>
 
       {connectionError && (

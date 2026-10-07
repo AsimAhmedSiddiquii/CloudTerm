@@ -733,6 +733,26 @@ button:disabled {
   color: #e6edf3;
 }
 
+.terminal-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.terminal-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: 12px;
+}
+
 .connected {
   margin-left: 12px;
 
@@ -744,7 +764,7 @@ button:disabled {
 .disconnect-button {
   margin: 0;
 
-  padding: 7px 14px;
+  padding: 6px 10px;
 
   background: #da3633;
   color: white;
@@ -753,17 +773,36 @@ button:disabled {
   border-radius: 6px;
 
   cursor: pointer;
+  font-size: 12px;
 }
 
 .split-button {
-  margin-left: auto;
-  margin-right: 8px;
-  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 6px 9px;
   border: 1px solid #30363d;
   border-radius: 6px;
   background: #21262d;
   color: #c9d1d9;
   cursor: pointer;
+  font-size: 12px;
+}
+
+.disconnect-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.terminal-action-icon {
+  display: inline-grid;
+  width: 14px;
+  place-items: center;
+  color: currentColor;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .split-button:hover {
