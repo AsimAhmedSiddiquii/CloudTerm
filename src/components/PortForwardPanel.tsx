@@ -20,6 +20,23 @@ export default function PortForwardPanel({ sessionId, onClose }: Props) {
   }, [boundAddress, sessionId]);
 
   async function start() {
+    if (!localHost.trim()) {
+      setError("Local host is required.");
+      return;
+    }
+    if (!remoteHost.trim()) {
+      setError("Remote host is required.");
+      return;
+    }
+    if (!Number.isInteger(localPort) || localPort < 0 || localPort > 65535) {
+      setError("Local port must be between 0 and 65535.");
+      return;
+    }
+    if (!Number.isInteger(remotePort) || remotePort < 1 || remotePort > 65535) {
+      setError("Remote port must be between 1 and 65535.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
