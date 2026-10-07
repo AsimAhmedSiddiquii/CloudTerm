@@ -20,6 +20,7 @@ The current version focuses on **AWS EC2 SSH connections** using PEM/private key
 - Optional AWS EC2 instance discovery from the local AWS credential chain
 - Import of common host entries from `~/.ssh/config`
 - Optional bastion / jump-host routing for private targets
+- Local SSH port forwarding with start/stop lifecycle controls
 - Native desktop file picker for SSH keys
 - Windows desktop application via Tauri
 
@@ -148,6 +149,8 @@ Use **Import SSH config** to read host aliases from your local `~/.ssh/config`. 
 
 For private subnets, enable **Connect through a bastion / jump host** in the connection form. CloudTerm authenticates to the bastion, opens an SSH `direct-tcpip` channel to the target, and then performs the target host-key check and authentication through that tunnel.
 
+For database or internal web services, open **Forward** from a terminal and choose a local bind address/port plus the remote host/port. Port `0` asks the operating system to choose an available local port. The forward is stopped automatically when the terminal disconnects.
+
 ## Build an Installable Desktop Application
 
 First make sure the development build works:
@@ -251,7 +254,7 @@ Remaining security improvements include:
 - [x] Host fingerprint verification
 - [x] Multiple terminal panes
 - [x] SFTP browser
-- [ ] SSH port forwarding
+- [x] SSH port forwarding
 - [x] Bastion / jump host support
 - [x] Import from `~/.ssh/config`
 - [x] AWS account integration

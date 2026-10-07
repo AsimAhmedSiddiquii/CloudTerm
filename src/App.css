@@ -1646,8 +1646,15 @@ body {
 .checkbox-label { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; color: var(--muted); cursor: pointer; }
 .checkbox-label input { width: 16px; height: 16px; margin: 0; }
 .bastion-card { display: grid; gap: 10px; margin: 0 0 18px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: rgba(76, 123, 255, .06); }
+.forward-panel { position: absolute; inset: 24px; z-index: 5; padding: 28px; border: 1px solid var(--border); border-radius: 20px; background: #121927; box-shadow: 0 24px 70px rgba(0,0,0,.42); }
+.forward-help { color: var(--muted); }
+.forward-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 24px 0; }
+.forward-grid label { display: grid; gap: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.forward-active { padding: 14px; border: 1px solid rgba(61,194,124,.35); border-radius: 12px; color: #b8f4d0; background: rgba(61,194,124,.1); }
+.forward-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
 
 @media (max-width: 760px) {
   .discovery-controls { grid-template-columns: 1fr; }
   .instance-card { align-items: flex-start; flex-direction: column; }
+  .forward-grid { grid-template-columns: 1fr; }
 }

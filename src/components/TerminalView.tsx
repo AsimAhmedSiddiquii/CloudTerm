@@ -44,6 +44,7 @@ interface Props {
   onKeyPassphrasePrompt?: (prompt: KeyPassphrasePrompt) => void;
   onSplitToggle?: () => void;
   onSftpOpen?: () => void;
+  onForwardOpen?: () => void;
   splitMode?: boolean;
   status?: "disconnected" | "connecting" | "connected" | "failed";
 }
@@ -77,6 +78,7 @@ export default function TerminalView({
   onKeyPassphrasePrompt,
   onSplitToggle,
   onSftpOpen,
+  onForwardOpen,
   splitMode = false,
   status = "connecting",
 }: Props) {
@@ -339,6 +341,10 @@ export default function TerminalView({
           >
             Files
           </button>
+        )}
+
+        {onForwardOpen && (
+          <button onClick={onForwardOpen} className="split-button" type="button">Forward</button>
         )}
 
         {status === "failed" && (

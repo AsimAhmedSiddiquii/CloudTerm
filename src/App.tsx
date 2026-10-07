@@ -12,6 +12,7 @@ import KeyManager from "./components/KeyManager";
 import SftpPanel from "./components/SftpPanel";
 import AwsDiscovery from "./components/AwsDiscovery";
 import SshConfigImport from "./components/SshConfigImport";
+import PortForwardPanel from "./components/PortForwardPanel";
 import type {
   HostKeyPrompt,
   KeyPassphrasePrompt,
@@ -100,6 +101,7 @@ function App() {
 
   const [showSftp, setShowSftp] =
     useState(false);
+  const [showForward, setShowForward] = useState(false);
 
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [showSshConfig, setShowSshConfig] = useState(false);
@@ -185,6 +187,7 @@ function App() {
     setShowNewConnection(false);
     setShowKeys(false);
     setShowSftp(false);
+    setShowForward(false);
   }
 
   function handleSavedSelect(
@@ -205,6 +208,7 @@ function App() {
     setEditingConnection(null);
     setShowKeys(false);
     setShowSftp(false);
+    setShowForward(false);
 
     setConnectionStatus(
       "connecting"
@@ -231,6 +235,7 @@ function App() {
     setShowNewConnection(true);
     setShowKeys(false);
     setShowSftp(false);
+    setShowForward(false);
 
     setConnectionStatus(
       "disconnected"
@@ -462,6 +467,7 @@ function App() {
               }}
               onSplitToggle={toggleSplitMode}
               onSftpOpen={() => setShowSftp(true)}
+              onForwardOpen={() => setShowForward(true)}
               splitMode={splitMode}
               onConnected={() => setConnectionStatus("connected")}
               onDisconnected={() => setConnectionStatus("disconnected")}
@@ -474,6 +480,7 @@ function App() {
                 setConnectionStatus("disconnected");
                 setShowNewConnection(false);
                 setShowSftp(false);
+                setShowForward(false);
               }}
             />
 
@@ -527,6 +534,9 @@ function App() {
                 sessionId={`primary-${activeConnection.id}`}
                 onClose={() => setShowSftp(false)}
               />
+            )}
+            {showForward && (
+              <PortForwardPanel sessionId={`primary-${activeConnection.id}`} onClose={() => setShowForward(false)} />
             )}
           </div>
         ) : showNewConnection ? (

@@ -118,6 +118,32 @@ async fn ssh_disconnect(
 }
 
 #[tauri::command]
+async fn ssh_start_local_forward(
+    session_id: String,
+    local_host: String,
+    local_port: u16,
+    remote_host: String,
+    remote_port: u16,
+    state: tauri::State<'_, SshState>,
+) -> Result<String, String> {
+    ssh::client::start_local_forward(
+        state.inner(), session_id, local_host, local_port, remote_host, remote_port,
+    )
+    .await
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn ssh_stop_local_forward(
+    session_id: String,
+    state: tauri::State<'_, SshState>,
+) -> Result<(), String> {
+    ssh::client::stop_local_forward(state.inner(), session_id)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn ssh_host_key_decision(
     session_id: String,
     accepted: bool,
@@ -250,6 +276,8 @@ pub fn run() {
                 ssh_input,
                 ssh_resize,
                 ssh_disconnect,
+                ssh_start_local_forward,
+                ssh_stop_local_forward,
                 ssh_host_key_decision,
                 ssh_key_passphrase,
                 sftp_list,

@@ -18,6 +18,8 @@ use russh::{
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpListener;
+use tokio::task::JoinHandle;
 use russh_sftp::client::SftpSession;
 
 #[derive(Debug, Clone, Serialize)]
@@ -105,8 +107,8 @@ impl client::Handler for Client {
 }
 
 struct ActiveSession {
-    session: client::Handle<Client>,
-    _upstream: Option<client::Handle<Client>>,
+    session: Arc<client::Handle<Client>>,
+    _upstream: Option<Arc<client::Handle<Client>>>,
     writer: ChannelWriteHalf<client::Msg>,
 }
 
@@ -122,6 +124,7 @@ pub struct SshState {
     active: Mutex<HashMap<String, ActiveSession>>,
     pending_host_keys: Mutex<HashMap<String, oneshot::Sender<bool>>>,
     pending_key_passphrases: Mutex<HashMap<String, oneshot::Sender<String>>>,
+    forwards: Mutex<HashMap<String, JoinHandle<()>>>,
 }
 
 async fn decode_key(
@@ -265,6 +268,8 @@ pub async fn connect_interactive(
         (session, None)
     };
 
+    let session = Arc::new(session);
+    let upstream = upstream.map(Arc::new);
     let channel = session
         .channel_open_session()
         .await
@@ -372,12 +377,74 @@ pub async fn resize_terminal(
 }
 
 pub async fn disconnect(state: &SshState, session_id: String) -> Result<()> {
+    if let Some(forward) = state.forwards.lock().await.remove(&session_id) {
+        forward.abort();
+    }
     if let Some(session) = state.active.lock().await.remove(&session_id) {
         let _ = session.writer.close().await;
         session
             .session
             .disconnect(Disconnect::ByApplication, "User disconnected", "English")
             .await?;
+    }
+    Ok(())
+}
+
+pub async fn start_local_forward(
+    state: &SshState,
+    session_id: String,
+    local_host: String,
+    local_port: u16,
+    remote_host: String,
+    remote_port: u16,
+) -> Result<String> {
+    if remote_host.trim().is_empty() {
+        bail!("Remote host is required");
+    }
+    if remote_port == 0 {
+        bail!("Remote port must be between 1 and 65535");
+    }
+
+    let session = state
+        .active
+        .lock()
+        .await
+        .get(&session_id)
+        .map(|active| active.session.clone())
+        .context("No active SSH session")?;
+    let listener = TcpListener::bind((local_host.as_str(), local_port)).await
+        .with_context(|| format!("Unable to bind local forwarding address {local_host}:{local_port}"))?;
+    let bound_address = listener.local_addr()?.to_string();
+    let task = tokio::spawn(async move {
+        loop {
+            let Ok((mut local, origin)) = listener.accept().await else { break };
+            let session = session.clone();
+            let remote_host = remote_host.clone();
+            tokio::spawn(async move {
+                let Ok(channel) = session
+                    .channel_open_direct_tcpip(
+                        remote_host,
+                        remote_port as u32,
+                        origin.ip().to_string(),
+                        origin.port() as u32,
+                    )
+                    .await
+                else { return };
+                let mut remote = channel.into_stream();
+                let _ = tokio::io::copy_bidirectional(&mut local, &mut remote).await;
+            });
+        }
+    });
+
+    if let Some(previous) = state.forwards.lock().await.insert(session_id, task) {
+        previous.abort();
+    }
+    Ok(bound_address)
+}
+
+pub async fn stop_local_forward(state: &SshState, session_id: String) -> Result<()> {
+    if let Some(forward) = state.forwards.lock().await.remove(&session_id) {
+        forward.abort();
     }
     Ok(())
 }
