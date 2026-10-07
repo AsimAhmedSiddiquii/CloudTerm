@@ -26,12 +26,14 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
   const [entries, setEntries] = useState<RemoteEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [transfer, setTransfer] = useState<"upload" | "download" | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
+      setSuccess("");
       setEntries(await invoke<RemoteEntry[]>("sftp_list", {
         sessionId,
         path,
@@ -61,11 +63,13 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     try {
       setTransfer("download");
       setError("");
+      setSuccess("");
       await invoke("sftp_download", {
         sessionId,
         remotePath: entry.path,
         localPath,
       });
+      setSuccess(`Downloaded ${entry.name}.`);
     } catch (err) {
       setError(String(err));
     } finally {
@@ -89,12 +93,14 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     try {
       setTransfer("upload");
       setError("");
+      setSuccess("");
       await invoke("sftp_upload", {
         sessionId,
         localPath,
         remotePath,
       });
       await refresh();
+      setSuccess(`Uploaded ${name}.`);
     } catch (err) {
       setError(String(err));
     } finally {
@@ -138,6 +144,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
       )}
 
       {error && <div className="form-error">{error}</div>}
+      {success && <div className="form-success" role="status">{success}</div>}
 
       <div className="sftp-list">
         {entries.length === 0 && !loading ? (
