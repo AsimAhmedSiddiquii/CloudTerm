@@ -27,6 +27,7 @@ interface Props {
     ) => Promise<void>;
 
     onVaultPasswordChange: (password: string) => void;
+    onVaultUnlock: (password: string) => Promise<void>;
     availableKeys: ImportedKey[];
     onKeyImported: (key: ImportedKey) => void;
 }
@@ -37,6 +38,7 @@ export default function AwsConnectionForm({
     onConnect,
     onSave,
     onVaultPasswordChange,
+    onVaultUnlock,
     availableKeys,
     onKeyImported,
 }: Props) {
@@ -87,10 +89,28 @@ export default function AwsConnectionForm({
     const [bastionKeyName, setBastionKeyName] = useState(initialConnection?.bastion?.keyName ?? "");
 
     const [importingKey, setImportingKey] = useState(false);
+    const [unlockingVault, setUnlockingVault] = useState(false);
 
     function updateVaultPassword(password: string) {
         setVaultPassword(password);
         onVaultPasswordChange(password);
+    }
+
+    async function unlockKeys() {
+        if (!vaultPassword.trim()) {
+            setError("Enter a vault password before unlocking keys.");
+            return;
+        }
+
+        try {
+            setUnlockingVault(true);
+            setError("");
+            await onVaultUnlock(vaultPassword);
+        } catch (err) {
+            setError(`Unable to unlock vault: ${String(err)}`);
+        } finally {
+            setUnlockingVault(false);
+        }
     }
 
     async function importPem() {
@@ -376,12 +396,22 @@ export default function AwsConnectionForm({
 
                     <label>Vault Password</label>
 
-                    <input
-                        type="password"
-                        value={vaultPassword}
-                        onChange={(e) => updateVaultPassword(e.target.value)}
-                        placeholder="Required to unlock encrypted keys"
-                    />
+                    <div className="vault-password-row">
+                        <input
+                            type="password"
+                            value={vaultPassword}
+                            onChange={(e) => updateVaultPassword(e.target.value)}
+                            placeholder="Required to unlock encrypted keys"
+                        />
+                        <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={unlockKeys}
+                            disabled={unlockingVault || !vaultPassword.trim()}
+                        >
+                            {unlockingVault ? "Unlocking…" : "Unlock keys"}
+                        </button>
+                    </div>
 
                     <label>Encrypted SSH Key</label>
 

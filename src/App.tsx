@@ -319,7 +319,11 @@ function App() {
 
   function handleVaultPasswordChange(password: string) {
     setVaultPassword(password);
-    refreshVaultKeys(password).catch(console.error);
+    setVaultKeys([]);
+  }
+
+  async function unlockVault(password: string) {
+    await refreshVaultKeys(password);
   }
 
   function openKeys() {
@@ -593,6 +597,7 @@ function App() {
               handleConnect
             }
             onVaultPasswordChange={handleVaultPasswordChange}
+            onVaultUnlock={unlockVault}
             availableKeys={vaultKeys}
             onKeyImported={(key) => {
               setVaultKeys((current) => [...current, key]);

@@ -1235,6 +1235,16 @@ button:disabled {
   outline: none;
 }
 
+.vault-password-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vault-password-row input {
+  flex: 1;
+}
+
 .vault-unlock-card small {
   display: block;
   margin-top: 9px;
