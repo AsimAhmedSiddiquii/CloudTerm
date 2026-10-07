@@ -69,6 +69,13 @@ export default function KeyManager({
     onPasswordChange(nextPassword);
   }
 
+  function lockVault() {
+    setKeys([]);
+    onKeysChange([]);
+    onPasswordChange("");
+    setError("");
+  }
+
   return (
     <div className="keys-page">
       <div className="keys-heading">
@@ -92,6 +99,9 @@ export default function KeyManager({
           />
           <button className="secondary-button" type="button" onClick={refresh} disabled={loading || !password}>
             {loading ? "Unlocking…" : "Unlock vault"}
+          </button>
+          <button className="secondary-button" type="button" onClick={lockVault} disabled={loading || !password}>
+            Lock vault
           </button>
         </div>
         <small>The password is kept in memory for this session only.</small>
