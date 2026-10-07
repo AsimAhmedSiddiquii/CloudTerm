@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use std::fs;
 
 use anyhow::{bail, Context, Result};
 use serde::Serialize;
@@ -17,7 +16,8 @@ use russh::{
 };
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{oneshot, Mutex};
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt};
+use tokio::fs;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use russh_sftp::client::SftpSession;
@@ -544,10 +544,16 @@ pub async fn sftp_download(
     local_path: String,
 ) -> Result<()> {
     let sftp = open_sftp(state, &session_id).await?;
-    let contents = sftp.read(remote_path).await?;
+    let mut remote = sftp.open(remote_path).await?;
+    let mut local = fs::File::create(&local_path)
+        .await
+        .with_context(|| format!("Unable to create local file: {local_path}"))?;
+    tokio::io::copy(&mut remote, &mut local)
+        .await
+        .with_context(|| format!("Unable to download remote file to: {local_path}"))?;
+    local.flush().await?;
+    remote.close().await?;
     sftp.close().await?;
-    fs::write(&local_path, contents)
-        .with_context(|| format!("Unable to write local file: {local_path}"))?;
     Ok(())
 }
 
@@ -557,10 +563,15 @@ pub async fn sftp_upload(
     local_path: String,
     remote_path: String,
 ) -> Result<()> {
-    let contents = fs::read(&local_path)
+    let mut local = fs::File::open(&local_path)
+        .await
         .with_context(|| format!("Unable to read local file: {local_path}"))?;
     let sftp = open_sftp(state, &session_id).await?;
-    sftp.write(remote_path, &contents).await?;
+    let mut remote = sftp.create(remote_path).await?;
+    tokio::io::copy(&mut local, &mut remote)
+        .await
+        .context("Unable to upload local file")?;
+    remote.close().await?;
     sftp.close().await?;
     Ok(())
 }
