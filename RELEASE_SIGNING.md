@@ -8,9 +8,11 @@ publishing a public release.
 1. Obtain an Authenticode certificate from the chosen code-signing provider.
 2. Store the PFX material and password in the repository's protected release
    environment; never commit either value.
-3. Configure the Windows release job to import the certificate into the runner,
-   set the Tauri Windows certificate thumbprint, and use an RFC 3161 timestamp
-   service.
+3. Configure the Windows release environment with the base64-encoded PFX in
+   `WINDOWS_CERTIFICATE_BASE64` and its password in
+   `WINDOWS_CERTIFICATE_PASSWORD`. The release workflow imports the certificate
+   only for the job, signs both MSI and NSIS artifacts with SHA-256, and verifies
+   them before checksums are generated.
 4. Verify the MSI and NSIS artifacts with Windows signature verification on a
    clean machine.
 
@@ -36,8 +38,9 @@ publishing a public release.
 - The tagged release workflow requires the repository variable
   `CLOUDTERM_PUBLIC_RELEASE_READY=true` before it publishes a GitHub Release.
   Leave it unset or false while signing, clean-machine, and upgrade validation
-  are incomplete; tagged builds will still build and validate packages but will
-  stop before publication.
+  are incomplete; tagged builds will stop before publication. Tagged builds also
+  fail earlier when the Windows signing secrets are missing, while manual
+  workflow runs may still produce unsigned validation packages.
 - Do not publish a broad public release until code signing, update signing,
   installer upgrade/uninstall validation, clean-machine validation, and the
   end-to-end SSH/SFTP/forwarding/backup pass are complete.
