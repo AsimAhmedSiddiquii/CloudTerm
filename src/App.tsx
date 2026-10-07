@@ -180,7 +180,9 @@ function App() {
       await refreshConnections();
       setEditingConnection(null);
     } catch (error) {
-      setStorageError(errorMessage(error, "Unable to save this connection."));
+      const message = errorMessage(error, "Unable to save this connection.");
+      setStorageError(message);
+      throw new Error(message);
     }
   }
 
