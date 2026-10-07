@@ -86,6 +86,13 @@ export default function TerminalView({
   splitMode = false,
   status = "connecting",
 }: Props) {
+  const statusLabel = status === "connected"
+    ? "Connected"
+    : status === "connecting"
+      ? "Connecting"
+      : status === "failed"
+        ? "Connection failed"
+        : "Disconnected";
   const [retryCount, setRetryCount] = useState(0);
   const terminalContainer =
     useRef<HTMLDivElement>(null);
@@ -326,7 +333,7 @@ export default function TerminalView({
             {username}@{host}
           </strong>
 
-          <span className={`terminal-status terminal-status-${status}`}>
+          <span className={`terminal-status terminal-status-${status}`} data-status={statusLabel} aria-live="polite">
             ● Connected
           </span>
         </div>

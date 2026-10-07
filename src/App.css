@@ -1423,6 +1423,15 @@ body {
   font-size: 11px;
 }
 
+.terminal-status {
+  font-size: 0;
+}
+
+.terminal-status::after {
+  content: attr(data-status);
+  font-size: 11px;
+}
+
 .connection-page {
   align-items: flex-start;
   padding: clamp(28px, 7vh, 72px) clamp(22px, 7vw, 100px);
