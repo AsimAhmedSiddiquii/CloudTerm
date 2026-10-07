@@ -1810,9 +1810,7 @@ body {
 
 .xterm-container {
   padding: 14px;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(88, 166, 255, 0.045), transparent 36%),
-    #0b1017;
+  background: #0c0c0c;
 }
 
 .terminal-workspace.is-split {
@@ -1912,6 +1910,11 @@ body {
 .discovery-controls label { display: grid; gap: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .discovery-controls input { margin-top: 0; }
 .discovery-button { min-height: 44px; white-space: nowrap; }
+.discovery-hint { margin: -6px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.discovery-hint code { color: #b9ccff; }
+.discovery-error { display: grid; gap: 6px; max-width: 100%; padding: 13px 15px; border: 1px solid rgba(255, 111, 83, .35); border-radius: 12px; color: #ffd0c7; background: rgba(255, 111, 83, .1); overflow-wrap: anywhere; }
+.discovery-error strong { color: #ffad9d; font-size: 13px; }
+.discovery-error span { font-size: 12px; line-height: 1.55; }
 .instance-list { display: grid; gap: 12px; margin-top: 22px; }
 .instance-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,.025); }
 .instance-card h2 { margin: 0; font-size: 16px; }

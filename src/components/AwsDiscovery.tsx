@@ -24,7 +24,7 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
       const nextInstances = await discoverInstances(profile, region);
       if (generation === requestGeneration.current) setInstances(nextInstances);
     } catch (err) {
-      if (generation === requestGeneration.current) setError(`Unable to discover EC2 instances: ${String(err)}`);
+      if (generation === requestGeneration.current) setError(String(err));
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
@@ -42,11 +42,12 @@ export default function AwsDiscovery({ onClose, onUseInstance }: Props) {
           <button className="icon-button" type="button" onClick={onClose} aria-label="Close discovery">×</button>
         </div>
         <div className="discovery-controls">
-          <label>AWS profile <span className="optional-label">Optional</span><input value={profile} onChange={(event) => setProfile(event.target.value)} placeholder="default" disabled={loading} /></label>
-          <label>Region <span className="optional-label">Optional</span><input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="us-east-1" disabled={loading} /></label>
+          <label>AWS profile <span className="optional-label">Uses default if blank</span><input value={profile} onChange={(event) => setProfile(event.target.value)} placeholder="default" autoCapitalize="none" spellCheck={false} disabled={loading} /></label>
+          <label>Region <span className="optional-label">Uses profile default</span><input value={region} onChange={(event) => setRegion(event.target.value)} placeholder="ap-south-1" autoCapitalize="none" spellCheck={false} disabled={loading} /></label>
           <button className="primary-button discovery-button" type="button" onClick={discover} disabled={loading}>{loading ? "Discovering…" : "Discover"}</button>
         </div>
-        {error && <div className="form-error" role="alert">{error}</div>}
+        <p className="discovery-hint">CloudTerm reads credentials from your local AWS configuration. The active identity needs <code>ec2:DescribeInstances</code>.</p>
+        {error && <div className="discovery-error" role="alert"><strong>Discovery failed</strong><span>{error}</span></div>}
         <div className="instance-list">
           {!loading && !error && instances.length === 0 && <div className="empty-state">No instances loaded yet. Choose a profile or region, then run discovery.</div>}
           {instances.map((instance) => {
