@@ -146,10 +146,10 @@ async fn decode_key(
                 "ssh-key-passphrase",
                 KeyPassphrasePrompt { session_id: session_id.to_owned() },
             );
-            let passphrase = passphrase_rx
-                .await
-                .map_err(|_| anyhow::anyhow!("SSH key passphrase prompt was cancelled"))?;
+            let passphrase_result = passphrase_rx.await;
             state.pending_key_passphrases.lock().await.remove(session_id);
+            let passphrase = passphrase_result
+                .map_err(|_| anyhow::anyhow!("SSH key passphrase prompt was cancelled"))?;
             decode_secret_key(key_contents, Some(&passphrase))
                 .context("Unable to decode the SSH key with that passphrase")
         }
@@ -184,15 +184,31 @@ where
         decision: Some(decision_rx),
     };
     let result = if let Some(stream) = stream {
-        tokio::time::timeout(Duration::from_secs(timeout_seconds), client::connect_stream(config, stream, handler))
-            .await
-            .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
-            .with_context(|| format!("Unable to connect to {}:{} through bastion", host, port))
+        match tokio::time::timeout(
+            Duration::from_secs(timeout_seconds),
+            client::connect_stream(config, stream, handler),
+        )
+        .await
+        {
+            Ok(connection) => connection
+                .with_context(|| format!("Unable to connect to {}:{} through bastion", host, port)),
+            Err(_) => Err(anyhow::anyhow!(
+                "Connection timed out after {timeout_seconds} seconds"
+            )),
+        }
     } else {
-        tokio::time::timeout(Duration::from_secs(timeout_seconds), client::connect(config, (host.as_str(), port), handler))
-            .await
-            .map_err(|_| anyhow::anyhow!("Connection timed out after 20 seconds"))?
-            .with_context(|| format!("Unable to connect to {}:{}", host, port))
+        match tokio::time::timeout(
+            Duration::from_secs(timeout_seconds),
+            client::connect(config, (host.as_str(), port), handler),
+        )
+        .await
+        {
+            Ok(connection) => connection
+                .with_context(|| format!("Unable to connect to {}:{}", host, port)),
+            Err(_) => Err(anyhow::anyhow!(
+                "Connection timed out after {timeout_seconds} seconds"
+            )),
+        }
     };
     state.pending_host_keys.lock().await.remove(session_id);
     result
