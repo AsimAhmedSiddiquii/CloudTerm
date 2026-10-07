@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { SavedConnection } from "../types/connection";
 
 import cloudTermIcon from "../assets/cloudterm-icon.png";
@@ -36,6 +37,15 @@ export default function Sidebar({
   onImportConfig,
   onBackup,
 }: Props) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleConnections = normalizedQuery
+    ? connections.filter((connection) =>
+      [connection.name, connection.host, connection.username, connection.keyName]
+        .some((value) => value.toLowerCase().includes(normalizedQuery))
+    )
+    : connections;
+
   function getStatusClass(id: string) {
     if (activeId !== id) {
       return "status-disconnected";
@@ -108,6 +118,15 @@ export default function Sidebar({
           AWS
         </div>
 
+        <input
+          className="connection-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Filter connections"
+          aria-label="Filter saved connections"
+        />
+
         <div className="connection-list">
           {connections.length === 0 && (
             <div className="empty-connections">
@@ -115,7 +134,13 @@ export default function Sidebar({
             </div>
           )}
 
-          {connections.map((connection) => (
+          {connections.length > 0 && visibleConnections.length === 0 && (
+            <div className="empty-connections">
+              No matching connections
+            </div>
+          )}
+
+          {visibleConnections.map((connection) => (
             <div
               key={connection.id}
               className={

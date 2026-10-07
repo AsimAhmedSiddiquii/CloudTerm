@@ -228,6 +228,22 @@ input {
   letter-spacing: 1px;
 }
 
+.connection-search {
+  width: calc(100% - 34px);
+  margin: 0 17px 10px;
+  padding: 9px 10px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  background: #161b22;
+  outline: none;
+}
+
+.connection-search:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.16);
+}
+
 .connection-list {
   padding-bottom: 10px;
 }
