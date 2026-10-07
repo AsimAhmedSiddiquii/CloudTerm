@@ -200,6 +200,7 @@ export default function Sidebar({
                 <button
                   className="connection-edit"
                   title="Edit connection"
+                  aria-label={`Edit ${connection.name}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     onEdit(connection);
@@ -211,6 +212,7 @@ export default function Sidebar({
                 <button
                   className="connection-delete"
                   title="Delete connection"
+                  aria-label={`Delete ${connection.name}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     onDelete(connection.id);

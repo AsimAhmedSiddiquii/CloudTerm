@@ -373,7 +373,7 @@ export default function TerminalView({
           </strong>
 
           <span className={`terminal-status terminal-status-${status}`} data-status={statusLabel} aria-live="polite">
-            ● Connected
+            ● {statusLabel}
           </span>
         </div>
 

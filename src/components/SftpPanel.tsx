@@ -143,7 +143,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
       </header>
 
       <div className="sftp-toolbar">
-        <button className="secondary-button" type="button" onClick={goUp}>↑</button>
+        <button className="secondary-button" type="button" onClick={goUp} aria-label="Go to parent directory">↑</button>
         <code>{path}</code>
         <button className="secondary-button" type="button" onClick={refresh} disabled={loading || Boolean(transfer)}>
           {loading ? "Refreshing…" : "Refresh"}
