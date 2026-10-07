@@ -16,7 +16,14 @@
 - Local SSH port forwarding with automatic cleanup on disconnect.
 - Per-connection timeout and keep-alive settings.
 - Metadata-only connection backup and restore.
-- Portable Windows ZIP packaging and a cross-platform read-only release workflow.
+- Portable Windows ZIP packaging and a cross-platform release workflow with checksum and package validation.
+
+### Changed
+
+- Encrypted vault and connection-backup writes now flush durable temporary files before replacement.
+- Backup imports validate connection metadata and avoid duplicate saved profiles.
+- Key management warns before deleting keys referenced by saved connections and clears stale keys after unlock failures.
+- Tagged releases publish the verified Windows, macOS, and Linux artifacts with consistent version metadata.
 
 ### Release notes
 
