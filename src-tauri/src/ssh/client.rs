@@ -430,6 +430,17 @@ pub async fn resize_terminal(
 }
 
 pub async fn disconnect(state: &SshState, session_id: String) -> Result<()> {
+    if let Some(sender) = state.pending_host_keys.lock().await.remove(&session_id) {
+        let _ = sender.send(false);
+    }
+    if let Some(sender) = state
+        .pending_key_passphrases
+        .lock()
+        .await
+        .remove(&session_id)
+    {
+        let _ = sender.send(String::new());
+    }
     if let Some(forward) = state.forwards.lock().await.remove(&session_id) {
         forward.abort();
     }
