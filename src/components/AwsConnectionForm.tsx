@@ -78,6 +78,7 @@ export default function AwsConnectionForm({
     );
 
     const [vaultPassword, setVaultPassword] = useState("");
+    const [showVaultPassword, setShowVaultPassword] = useState(false);
 
     const [keyPath, setKeyPath] = useState("");
 
@@ -411,12 +412,23 @@ export default function AwsConnectionForm({
                     <label>Vault Password</label>
 
                     <div className="vault-password-row">
-                        <input
-                            type="password"
-                            value={vaultPassword}
-                            onChange={(e) => updateVaultPassword(e.target.value)}
-                            placeholder="Required to unlock encrypted keys"
-                        />
+                        <div className="password-input-wrap">
+                            <input
+                                type={showVaultPassword ? "text" : "password"}
+                                value={vaultPassword}
+                                onChange={(e) => updateVaultPassword(e.target.value)}
+                                placeholder="Required to unlock encrypted keys"
+                            />
+                            <button
+                                className="password-toggle"
+                                type="button"
+                                onClick={() => setShowVaultPassword((visible) => !visible)}
+                                aria-label={showVaultPassword ? "Hide vault password" : "Show vault password"}
+                                title={showVaultPassword ? "Hide password" : "Show password"}
+                            >
+                                {showVaultPassword ? "Hide" : "Show"}
+                            </button>
+                        </div>
                         <button
                             className="secondary-button"
                             type="button"

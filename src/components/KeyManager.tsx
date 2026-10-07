@@ -22,6 +22,7 @@ export default function KeyManager({
   const [keys, setKeys] = useState<ImportedKey[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!password) {
@@ -90,13 +91,24 @@ export default function KeyManager({
       <section className="vault-unlock-card">
         <label htmlFor="vault-password">Vault password</label>
         <div className="vault-unlock-row">
-          <input
-            id="vault-password"
-            type="password"
-            value={password}
-            onChange={(event) => handlePasswordChange(event.target.value)}
-            placeholder="Enter your vault password"
-          />
+          <div className="password-input-wrap">
+            <input
+              id="vault-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(event) => handlePasswordChange(event.target.value)}
+              placeholder="Enter your vault password"
+            />
+            <button
+              className="password-toggle"
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide vault password" : "Show vault password"}
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
           <button className="secondary-button" type="button" onClick={refresh} disabled={loading || !password}>
             {loading ? "Unlocking…" : "Unlock vault"}
           </button>
