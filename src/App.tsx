@@ -33,7 +33,7 @@ import {
   saveConnection,
   saveConnections,
 } from "./services/connectionStore";
-import { listKeys } from "./services/keyVault";
+import { isVaultInitialized, listKeys } from "./services/keyVault";
 import type { ImportedKey } from "./services/keyVault";
 import type { Ec2Instance } from "./services/aws";
 import type { SshConfigEntry } from "./services/sshConfig";
@@ -60,6 +60,7 @@ function App() {
     connections,
     setConnections,
   ] = useState<SavedConnection[]>([]);
+  const [connectionsLoaded, setConnectionsLoaded] = useState(false);
 
   const [
     activeConnection,
@@ -81,6 +82,8 @@ function App() {
       setStorageError(null);
     } catch (error) {
       setStorageError(errorMessage(error, "Unable to load saved connections."));
+    } finally {
+      setConnectionsLoaded(true);
     }
   }
 
@@ -129,6 +132,11 @@ function App() {
   const [storageError, setStorageError] = useState<string | null>(null);
   const [updaterConfigured, setUpdaterConfigured] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [showVaultSetup, setShowVaultSetup] = useState(false);
+  const [vaultSetupPassword, setVaultSetupPassword] = useState("");
+  const [vaultSetupConfirmation, setVaultSetupConfirmation] = useState("");
+  const [vaultSetupError, setVaultSetupError] = useState("");
+  const [vaultSetupLoading, setVaultSetupLoading] = useState(false);
 
   const keyUsageCounts = connections.reduce<Record<string, number>>((counts, connection) => {
     const usedKeyIds = new Set([connection.keyId]);
@@ -157,6 +165,18 @@ function App() {
       console.error
     );
   }, []);
+
+  useEffect(() => {
+    if (!connectionsLoaded || connections.length > 0) {
+      return;
+    }
+
+    isVaultInitialized()
+      .then((initialized) => {
+        if (!initialized) setShowVaultSetup(true);
+      })
+      .catch((error) => setStorageError(errorMessage(error, "Unable to inspect the encrypted vault.")));
+  }, [connections.length, connectionsLoaded]);
 
   useEffect(() => {
     isUpdaterConfigured()
@@ -377,6 +397,31 @@ function App() {
 
   async function unlockVault(password: string) {
     await refreshVaultKeys(password);
+  }
+
+  async function createVaultPassword() {
+    if (vaultSetupPassword.trim().length < 8) {
+      setVaultSetupError("Use at least 8 characters for the vault password.");
+      return;
+    }
+    if (vaultSetupPassword !== vaultSetupConfirmation) {
+      setVaultSetupError("The vault passwords do not match.");
+      return;
+    }
+
+    try {
+      setVaultSetupLoading(true);
+      setVaultSetupError("");
+      await listKeys(vaultSetupPassword);
+      setVaultPassword(vaultSetupPassword);
+      setVaultSetupPassword("");
+      setVaultSetupConfirmation("");
+      setShowVaultSetup(false);
+    } catch (error) {
+      setVaultSetupError(errorMessage(error, "Unable to create the encrypted vault."));
+    } finally {
+      setVaultSetupLoading(false);
+    }
   }
 
   function openKeys() {
@@ -707,6 +752,41 @@ function App() {
           )}
         </Suspense>
       </main>
+
+      {showVaultSetup && (
+        <div className="modal-backdrop">
+          <section className="trust-dialog passphrase-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-setup-title">
+            <div className="trust-dialog-icon key-icon">⌑</div>
+            <p className="eyebrow">FIRST CONNECTION</p>
+            <h2 id="vault-setup-title">Create your vault password</h2>
+            <p>
+              CloudTerm encrypts imported SSH keys locally. Set a password to protect your key vault; it is kept only in memory during this session.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              value={vaultSetupPassword}
+              onChange={(event) => setVaultSetupPassword(event.target.value)}
+              placeholder="Create vault password"
+            />
+            <input
+              type="password"
+              value={vaultSetupConfirmation}
+              onChange={(event) => setVaultSetupConfirmation(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void createVaultPassword();
+              }}
+              placeholder="Confirm vault password"
+            />
+            {vaultSetupError && <div className="form-error" role="alert">{vaultSetupError}</div>}
+            <div className="trust-actions">
+              <button className="primary-button" type="button" onClick={() => void createVaultPassword()} disabled={vaultSetupLoading}>
+                {vaultSetupLoading ? "Creating vault…" : "Set password"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {hostKeyPrompt && (
         <div className="modal-backdrop">

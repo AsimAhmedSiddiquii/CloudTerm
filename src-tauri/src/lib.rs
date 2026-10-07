@@ -305,6 +305,11 @@ async fn vault_list_keys(
 }
 
 #[tauri::command]
+fn vault_initialized(app: tauri::AppHandle) -> Result<bool, String> {
+    vault::is_initialized(&app).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn vault_delete_key(
     id: String,
     password: String,
@@ -368,6 +373,7 @@ pub fn run() {
                 vault_import_key,
                 vault_read_key,
                 vault_list_keys,
+                vault_initialized,
                 vault_delete_key,
                 aws_discover_instances,
                 write_connection_backup,

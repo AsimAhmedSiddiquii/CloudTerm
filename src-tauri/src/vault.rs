@@ -58,6 +58,16 @@ fn load_vault(path: &PathBuf) -> Result<VaultFile> {
     serde_json::from_slice(&bytes).context("The encrypted key vault is corrupted")
 }
 
+pub fn is_initialized(app: &AppHandle) -> Result<bool> {
+    let path = vault_path(app)?;
+    if !path.exists() {
+        return Ok(false);
+    }
+
+    let vault = load_vault(&path)?;
+    Ok(vault.salt.len() == SALT_LENGTH)
+}
+
 fn save_vault(path: &PathBuf, vault: &VaultFile) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).context("Unable to create the CloudTerm data directory")?;

@@ -39,6 +39,10 @@ export async function listKeys(
   return invoke<ImportedKey[]>("vault_list_keys", { password });
 }
 
+export async function isVaultInitialized(): Promise<boolean> {
+  return invoke<boolean>("vault_initialized");
+}
+
 export async function deleteKey(
   password: string,
   id: string
