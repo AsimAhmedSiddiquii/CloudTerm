@@ -13,6 +13,7 @@ import SftpPanel from "./components/SftpPanel";
 import AwsDiscovery from "./components/AwsDiscovery";
 import SshConfigImport from "./components/SshConfigImport";
 import PortForwardPanel from "./components/PortForwardPanel";
+import ConnectionBackup from "./components/ConnectionBackup";
 import type {
   HostKeyPrompt,
   KeyPassphrasePrompt,
@@ -33,6 +34,7 @@ import { listKeys } from "./services/keyVault";
 import type { ImportedKey } from "./services/keyVault";
 import type { Ec2Instance } from "./services/aws";
 import type { SshConfigEntry } from "./services/sshConfig";
+import type { SavedConnection as BackupConnection } from "./types/connection";
 
 import type {
   ConnectionDraft,
@@ -105,6 +107,7 @@ function App() {
 
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [showSshConfig, setShowSshConfig] = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
   const [connectionPrefill, setConnectionPrefill] = useState<Partial<ConnectionDraft> | null>(null);
 
   const [splitMode, setSplitMode] =
@@ -301,6 +304,7 @@ function App() {
     setShowSftp(false);
     setShowDiscovery(false);
     setShowSshConfig(false);
+    setShowBackup(false);
     setConnectionPrefill(null);
     setSplitConnections([]);
     setSplitMode(false);
@@ -334,6 +338,7 @@ function App() {
     setShowSftp(false);
     setShowDiscovery(false);
     setShowSshConfig(false);
+    setShowBackup(false);
   }
 
   function openDiscovery() {
@@ -346,6 +351,7 @@ function App() {
     setShowSftp(false);
     setShowDiscovery(true);
     setShowSshConfig(false);
+    setShowBackup(false);
     setConnectionPrefill(null);
   }
 
@@ -374,6 +380,25 @@ function App() {
     });
     setShowSshConfig(false);
     setShowNewConnection(true);
+  }
+
+  function openBackup() {
+    setActiveConnection(null);
+    setEditingConnection(null);
+    setSplitConnections([]);
+    setSplitMode(false);
+    setShowNewConnection(false);
+    setShowKeys(false);
+    setShowSftp(false);
+    setShowForward(false);
+    setShowDiscovery(false);
+    setShowSshConfig(false);
+    setShowBackup(true);
+  }
+
+  async function importConnections(imported: BackupConnection[]) {
+    for (const connection of imported) await saveConnection(connection);
+    await refreshConnections();
   }
 
   function useDiscoveredInstance(instance: Ec2Instance) {
@@ -435,10 +460,13 @@ function App() {
         onKeys={openKeys}
         onDiscover={openDiscovery}
         onImportConfig={openSshConfig}
+        onBackup={openBackup}
       />
 
       <main className="main-content">
-        {showSshConfig ? (
+        {showBackup ? (
+          <ConnectionBackup connections={connections} onImport={importConnections} onClose={() => setShowBackup(false)} />
+        ) : showSshConfig ? (
           <SshConfigImport onClose={() => setShowSshConfig(false)} onUseEntry={useSshConfigEntry} />
         ) : showDiscovery ? (
           <AwsDiscovery onClose={() => setShowDiscovery(false)} onUseInstance={useDiscoveredInstance} />

@@ -4,6 +4,7 @@ mod aws;
 mod ssh_config;
 
 use serde::Deserialize;
+use std::fs;
 
 use ssh::client::SshState;
 
@@ -14,6 +15,16 @@ async fn aws_discover_instances(
     aws::discover_instances(request)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn write_connection_backup(path: String, contents: String) -> Result<(), String> {
+    fs::write(&path, contents).map_err(|error| format!("Unable to write backup: {error}"))
+}
+
+#[tauri::command]
+fn read_connection_backup(path: String) -> Result<String, String> {
+    fs::read_to_string(&path).map_err(|error| format!("Unable to read backup: {error}"))
 }
 
 #[tauri::command]
@@ -292,6 +303,8 @@ pub fn run() {
                 vault_list_keys,
                 vault_delete_key,
                 aws_discover_instances,
+                write_connection_backup,
+                read_connection_backup,
                 ssh_config_entries,
             ]
         )

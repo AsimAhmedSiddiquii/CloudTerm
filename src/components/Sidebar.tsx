@@ -20,6 +20,7 @@ interface Props {
   onKeys: () => void;
   onDiscover: () => void;
   onImportConfig: () => void;
+  onBackup: () => void;
 }
 
 export default function Sidebar({
@@ -33,6 +34,7 @@ export default function Sidebar({
   onKeys,
   onDiscover,
   onImportConfig,
+  onBackup,
 }: Props) {
   function getStatusClass(id: string) {
     if (activeId !== id) {
@@ -94,6 +96,11 @@ export default function Sidebar({
       <button className="keys-nav-button" type="button" onClick={onImportConfig}>
         <span>⌘</span>
         Import SSH config
+      </button>
+
+      <button className="keys-nav-button" type="button" onClick={onBackup}>
+        <span>⇄</span>
+        Backup connections
       </button>
 
       <div className="sidebar-section">

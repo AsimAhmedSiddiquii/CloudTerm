@@ -1652,6 +1652,11 @@ body {
 .forward-grid label { display: grid; gap: 8px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .forward-active { padding: 14px; border: 1px solid rgba(61,194,124,.35); border-radius: 12px; color: #b8f4d0; background: rgba(61,194,124,.1); }
 .forward-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.backup-page { min-height: 100%; padding: 42px clamp(24px, 5vw, 72px); background: radial-gradient(circle at top right, rgba(77,129,255,.12), transparent 36%), var(--surface); }
+.backup-card { max-width: 720px; margin: 0 auto; padding: 34px; border: 1px solid var(--border); border-radius: 24px; background: rgba(18,25,39,.84); box-shadow: 0 24px 70px rgba(0,0,0,.22); }
+.backup-summary { display: flex; align-items: baseline; gap: 10px; margin: 34px 0; padding: 22px; border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,.025); color: var(--muted); }
+.backup-summary strong { color: var(--text); font-size: 34px; }
+.backup-actions { display: flex; justify-content: flex-end; gap: 12px; }
 
 @media (max-width: 760px) {
   .discovery-controls { grid-template-columns: 1fr; }

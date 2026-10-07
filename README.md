@@ -22,6 +22,7 @@ The current version focuses on **AWS EC2 SSH connections** using PEM/private key
 - Optional bastion / jump-host routing for private targets
 - Local SSH port forwarding with start/stop lifecycle controls
 - Per-connection timeout and keep-alive settings
+- Metadata-only connection backup and restore
 - Native desktop file picker for SSH keys
 - Windows desktop application via Tauri
 
@@ -153,6 +154,8 @@ For private subnets, enable **Connect through a bastion / jump host** in the con
 For database or internal web services, open **Forward** from a terminal and choose a local bind address/port plus the remote host/port. Port `0` asks the operating system to choose an available local port. The forward is stopped automatically when the terminal disconnects.
 
 Advanced connection settings allow the timeout and keep-alive interval to be tuned per host; existing connections continue using safe defaults when these fields are absent.
+
+**Backup connections** exports JSON metadata only: hosts, ports, usernames, SSH options, and vault key references. Private key contents and the encrypted vault are never included. After importing on another machine, import/select the corresponding private key locally.
 
 ## Build an Installable Desktop Application
 
