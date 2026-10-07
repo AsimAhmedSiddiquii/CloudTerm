@@ -172,6 +172,10 @@ export default function TerminalView({
             );
           }
         );
+      if (disposed) {
+        unlistenOutput();
+        return;
+      }
 
       unlistenClosed =
         await listen(
@@ -184,6 +188,10 @@ export default function TerminalView({
             );
           }
         );
+      if (disposed) {
+        unlistenClosed();
+        return;
+      }
 
       unlistenHostKey = await listen<HostKeyPrompt>(
         "ssh-host-key",
@@ -193,6 +201,10 @@ export default function TerminalView({
           }
         }
       );
+      if (disposed) {
+        unlistenHostKey();
+        return;
+      }
 
       unlistenKeyPassphrase = await listen<KeyPassphrasePrompt>(
         "ssh-key-passphrase",
@@ -202,6 +214,10 @@ export default function TerminalView({
           }
         }
       );
+      if (disposed) {
+        unlistenKeyPassphrase();
+        return;
+      }
 
       try {
         if (!disposed) {
@@ -214,6 +230,9 @@ export default function TerminalView({
         const bastionKeyContents = bastion
           ? await readKey(vaultPassword, bastion.keyId)
           : undefined;
+        if (disposed) {
+          return;
+        }
 
         await invoke(
           "connect_aws_ssh",
@@ -239,8 +258,14 @@ export default function TerminalView({
           }
         );
 
+        if (disposed) {
+          return;
+        }
         lifecycleCallbacks.current.onConnected?.();
       } catch (error) {
+        if (disposed) {
+          return;
+        }
         lifecycleCallbacks.current.onFailed?.();
         if (!disposed) {
           setConnectionError(String(error));
@@ -255,7 +280,14 @@ export default function TerminalView({
       }
     }
 
-    start();
+    start().catch((error) => {
+      if (disposed) {
+        return;
+      }
+      lifecycleCallbacks.current.onFailed?.();
+      setConnectionError(String(error));
+      terminal.write(`\r\n\x1b[31mConnection setup failed: ${String(error)}\x1b[0m\r\n`);
+    });
 
     const dataDisposable =
       terminal.onData(
