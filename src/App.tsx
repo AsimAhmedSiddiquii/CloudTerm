@@ -124,9 +124,12 @@ function App() {
   const [storageError, setStorageError] = useState<string | null>(null);
 
   const keyUsageCounts = connections.reduce<Record<string, number>>((counts, connection) => {
-    counts[connection.keyId] = (counts[connection.keyId] ?? 0) + 1;
+    const usedKeyIds = new Set([connection.keyId]);
     if (connection.bastion) {
-      counts[connection.bastion.keyId] = (counts[connection.bastion.keyId] ?? 0) + 1;
+      usedKeyIds.add(connection.bastion.keyId);
+    }
+    for (const keyId of usedKeyIds) {
+      counts[keyId] = (counts[keyId] ?? 0) + 1;
     }
     return counts;
   }, {});
