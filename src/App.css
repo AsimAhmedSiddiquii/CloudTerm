@@ -1080,6 +1080,16 @@ button:disabled {
   white-space: nowrap;
 }
 
+.sftp-transfer-status {
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  border-radius: 8px;
+  color: #9ecbff;
+  background: rgba(56, 139, 253, 0.1);
+  font-size: 13px;
+}
+
 .sftp-list {
   flex: 1;
   min-height: 0;

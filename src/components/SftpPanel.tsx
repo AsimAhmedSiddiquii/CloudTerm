@@ -26,6 +26,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
   const [entries, setEntries] = useState<RemoteEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [transfer, setTransfer] = useState<"upload" | "download" | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -49,6 +50,8 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
   }, [refresh]);
 
   async function download(entry: RemoteEntry) {
+    if (transfer) return;
+
     const localPath = await save({
       defaultPath: entry.name,
       title: `Download ${entry.name}`,
@@ -56,6 +59,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     if (!localPath) return;
 
     try {
+      setTransfer("download");
       setError("");
       await invoke("sftp_download", {
         sessionId,
@@ -64,10 +68,14 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
       });
     } catch (err) {
       setError(String(err));
+    } finally {
+      setTransfer(null);
     }
   }
 
   async function upload() {
+    if (transfer) return;
+
     const localPath = await open({
       multiple: false,
       directory: false,
@@ -79,6 +87,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
     const remotePath = path === "." ? `./${name}` : `${path}/${name}`;
 
     try {
+      setTransfer("upload");
       setError("");
       await invoke("sftp_upload", {
         sessionId,
@@ -88,10 +97,13 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
       await refresh();
     } catch (err) {
       setError(String(err));
+    } finally {
+      setTransfer(null);
     }
   }
 
   function goUp() {
+    if (transfer) return;
     if (path === "." || path === "/") return;
     const clean = path.replace(/\/$/, "");
     const parent = clean.slice(0, clean.lastIndexOf("/"));
@@ -111,11 +123,19 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
       <div className="sftp-toolbar">
         <button className="secondary-button" type="button" onClick={goUp}>↑</button>
         <code>{path}</code>
-        <button className="secondary-button" type="button" onClick={refresh} disabled={loading}>
+        <button className="secondary-button" type="button" onClick={refresh} disabled={loading || Boolean(transfer)}>
           {loading ? "Refreshing…" : "Refresh"}
         </button>
-        <button className="primary-button" type="button" onClick={upload}>Upload</button>
+        <button className="primary-button" type="button" onClick={upload} disabled={loading || Boolean(transfer)}>
+          {transfer === "upload" ? "Uploading…" : "Upload"}
+        </button>
       </div>
+
+      {transfer && (
+        <div className="sftp-transfer-status" role="status">
+          {transfer === "upload" ? "Uploading file…" : "Downloading file…"}
+        </div>
+      )}
 
       {error && <div className="form-error">{error}</div>}
 
@@ -127,6 +147,7 @@ export default function SftpPanel({ sessionId, onClose }: Props) {
             <button
               className="sftp-entry-main"
               type="button"
+              disabled={Boolean(transfer)}
               onClick={() => entry.isDir ? setPath(entry.path) : download(entry)}
             >
               <span className={`sftp-entry-icon ${entry.isDir ? "folder" : "file"}`}>
