@@ -1,10 +1,10 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Cross-platform SSH connection manager for cloud and private infrastructure"
+authors = ["Asim Ahmed Siddiqui"]
+license = "MIT"
+repository = "https://github.com/AsimAhmedSiddiquii/CloudTerm"
 edition = "2024"
 rust-version = "1.90"
 
@@ -22,7 +22,6 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.12.1", features = [] }
-tauri-plugin-log = "2"
 anyhow = "1.0.104"
 tokio = { version = "1.53.2", features = ["full"] }
 russh = { version = "0.64.1", default-features = false, features = ["ring", "flate2", "rsa"] }
