@@ -5,6 +5,7 @@ mod ssh_config;
 
 use serde::Deserialize;
 use std::fs;
+use std::path::PathBuf;
 
 use ssh::client::SshState;
 
@@ -19,7 +20,25 @@ async fn aws_discover_instances(
 
 #[tauri::command]
 fn write_connection_backup(path: String, contents: String) -> Result<(), String> {
-    fs::write(&path, contents).map_err(|error| format!("Unable to write backup: {error}"))
+    let path = PathBuf::from(path);
+    let temporary_path = path.with_extension("json.tmp");
+
+    fs::write(&temporary_path, contents.as_bytes())
+        .map_err(|error| format!("Unable to write backup: {error}"))?;
+
+    if let Err(replace_error) = fs::rename(&temporary_path, &path) {
+        if path.exists() {
+            fs::remove_file(&path)
+                .map_err(|error| format!("Unable to replace backup: {error}"))?;
+            fs::rename(&temporary_path, &path)
+                .map_err(|error| format!("Unable to finalize backup: {error}"))?;
+        } else {
+            let _ = fs::remove_file(&temporary_path);
+            return Err(format!("Unable to finalize backup: {replace_error}"));
+        }
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
