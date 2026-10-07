@@ -58,6 +58,14 @@ input {
   background: #0d1117;
 }
 
+.panel-loading {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .persistence-notice {
   display: flex;
   align-items: center;

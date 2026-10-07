@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useState,
 } from "react";
@@ -6,14 +8,14 @@ import {
 import "./App.css";
 
 import Sidebar from "./components/Sidebar";
-import AwsConnectionForm from "./components/AwsConnectionForm";
-import TerminalView from "./components/TerminalView";
-import KeyManager from "./components/KeyManager";
-import SftpPanel from "./components/SftpPanel";
-import AwsDiscovery from "./components/AwsDiscovery";
-import SshConfigImport from "./components/SshConfigImport";
-import PortForwardPanel from "./components/PortForwardPanel";
-import ConnectionBackup from "./components/ConnectionBackup";
+const AwsConnectionForm = lazy(() => import("./components/AwsConnectionForm"));
+const TerminalView = lazy(() => import("./components/TerminalView"));
+const KeyManager = lazy(() => import("./components/KeyManager"));
+const SftpPanel = lazy(() => import("./components/SftpPanel"));
+const AwsDiscovery = lazy(() => import("./components/AwsDiscovery"));
+const SshConfigImport = lazy(() => import("./components/SshConfigImport"));
+const PortForwardPanel = lazy(() => import("./components/PortForwardPanel"));
+const ConnectionBackup = lazy(() => import("./components/ConnectionBackup"));
 import type {
   HostKeyPrompt,
   KeyPassphrasePrompt,
@@ -481,19 +483,20 @@ function App() {
           </div>
         )}
 
-        {showBackup ? (
-          <ConnectionBackup connections={connections} onImport={importConnections} onClose={() => setShowBackup(false)} />
-        ) : showSshConfig ? (
-          <SshConfigImport onClose={() => setShowSshConfig(false)} onUseEntry={useSshConfigEntry} />
-        ) : showDiscovery ? (
-          <AwsDiscovery onClose={() => setShowDiscovery(false)} onUseInstance={useDiscoveredInstance} />
-        ) : showKeys ? (
-          <KeyManager
-            password={vaultPassword}
-            onPasswordChange={handleVaultPasswordChange}
-            onKeysChange={setVaultKeys}
-          />
-        ) : activeConnection ? (
+        <Suspense fallback={<div className="panel-loading" role="status">Loading workspace…</div>}>
+          {showBackup ? (
+            <ConnectionBackup connections={connections} onImport={importConnections} onClose={() => setShowBackup(false)} />
+          ) : showSshConfig ? (
+            <SshConfigImport onClose={() => setShowSshConfig(false)} onUseEntry={useSshConfigEntry} />
+          ) : showDiscovery ? (
+            <AwsDiscovery onClose={() => setShowDiscovery(false)} onUseInstance={useDiscoveredInstance} />
+          ) : showKeys ? (
+            <KeyManager
+              password={vaultPassword}
+              onPasswordChange={handleVaultPasswordChange}
+              onKeysChange={setVaultKeys}
+            />
+          ) : activeConnection ? (
           <div className={`terminal-workspace ${splitMode ? "is-split" : ""}`}>
             <TerminalView
               sessionId={`primary-${activeConnection.id}`}
@@ -623,7 +626,8 @@ function App() {
               + New Connection
             </button>
           </div>
-        )}
+          )}
+        </Suspense>
       </main>
 
       {hostKeyPrompt && (
