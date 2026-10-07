@@ -6,20 +6,22 @@ type AppErrorBoundaryProps = {
 
 type AppErrorBoundaryState = {
   hasError: boolean;
+  errorMessage: string;
 };
 
 export default class AppErrorBoundary extends React.Component<
   AppErrorBoundaryProps,
   AppErrorBoundaryState
 > {
-  state: AppErrorBoundaryState = { hasError: false };
+  state: AppErrorBoundaryState = { hasError: false, errorMessage: "" };
 
-  static getDerivedStateFromError(): AppErrorBoundaryState {
+  static getDerivedStateFromError(): Partial<AppErrorBoundaryState> {
     return { hasError: true };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("CloudTerm UI error", error, errorInfo);
+    this.setState({ errorMessage: error.message || String(error) });
   }
 
   render() {
@@ -39,6 +41,9 @@ export default class AppErrorBoundary extends React.Component<
             The workspace could not be rendered. Your saved connections and vault data are
             still stored locally.
           </p>
+          {this.state.errorMessage && (
+            <pre className="error-boundary-details">{this.state.errorMessage}</pre>
+          )}
           <button type="button" onClick={() => window.location.reload()}>
             Reload application
           </button>
